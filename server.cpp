@@ -17,7 +17,7 @@ void StabilityServer::init_routes() {
     // 统一处理GET请求
     m_listener.support(methods::GET, [this](http_request request) {
         const auto path = request.relative_uri().path();
-        SPDLOG_DEBUG("[GET] 请求路径: {}", utility::conversions::to_utf8string(path));
+        SPDLOG_DEBUG("[GET] 请求路径: {}", path);
 
         if (path == "/stability/health") {
             handle_health(request);
@@ -33,7 +33,7 @@ void StabilityServer::init_routes() {
     // 统一处理POST请求
     m_listener.support(methods::POST, [this](http_request request) {
         const auto path = request.relative_uri().path();
-        SPDLOG_DEBUG("[POST] 请求路径: {}", utility::conversions::to_utf8string(path));
+        SPDLOG_DEBUG("[POST] 请求路径: {}", path);
 
         if (path == "/stability/support/control") {
             handle_support_control(request);
@@ -51,8 +51,7 @@ void StabilityServer::init_routes() {
 
     // 处理其他HTTP方法
     m_listener.support([](http_request request) {
-        SPDLOG_WARN("不支持的HTTP方法: {}",
-            utility::conversions::to_utf8string(request.method()));
+        SPDLOG_WARN("不支持的HTTP方法: {}", request.method());
         request.reply(status_codes::MethodNotAllowed);
         });
 }
@@ -84,12 +83,10 @@ void StabilityServer::handle_support_control(http_request request) {
             const int defectId = body["defectId"].as_integer();
             const utility::string_t state = body["state"].as_string();
 
-            SPDLOG_INFO("收到支撑控制请求 taskId={}, state={}",
-                taskId, utility::conversions::to_utf8string(state));
+            SPDLOG_INFO("收到支撑控制请求 taskId={}, state={}", taskId, state);
 
             // 创建异步任务
-            TaskManager::instance().create_task(taskId, defectId,
-                utility::conversions::to_utf8string(state));
+            TaskManager::instance().create_task(taskId, defectId, state);
 
             json::value response;
             response["msg"] = json::value::string("操作已接受");
@@ -123,13 +120,13 @@ void StabilityServer::handle_platform_control(http_request request) {
             const utility::string_t state = body["state"].as_string();
 
             SPDLOG_INFO("收到平台控制请求 platform={}, state={}",
-                platformNum, utility::conversions::to_utf8string(state));
+                platformNum, state);
 
             // 创建异步任务（带平台编号）
             TaskManager::instance().create_task(
                 taskId,
                 defectId,
-                utility::conversions::to_utf8string(state),
+                state,
                 std::to_string(platformNum)
             );
 
