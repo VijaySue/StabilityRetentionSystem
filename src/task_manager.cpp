@@ -2,13 +2,13 @@
  * @file task_manager.cpp
  * @brief 异步任务管理器实现
  * @details 负责处理异步任务队列，执行设备控制操作，并发送回调信息
- * @author Stability Retention System Team
- * @version 1.0
- * @date 2023-06-01
+ * @author VijaySue
+ * @version 2.0
+ * @date 2024-3-11
  */
-#include "task_manager.h"
-#include "plc_manager.h"
-#include "callback_client.h"
+#include "../include/task_manager.h"
+#include "../include/plc_manager.h"
+#include "../include/callback_client.h"
 #include <spdlog/spdlog.h>
 
 /**

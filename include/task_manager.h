@@ -1,4 +1,10 @@
-// task_manager.h
+/**
+ * @file task_manager.h
+ * @brief 异步任务管理器类定义
+ * @details 管理异步任务的创建、执行和状态跟踪
+ * @author VijaySue
+ * @date 2024-3-11
+ */
 #pragma once
 #include <string>
 #include <queue>

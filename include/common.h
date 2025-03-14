@@ -2,9 +2,9 @@
  * @file common.h
  * @brief 公共定义和工具函数
  * @details 包含整个系统中共用的常量、类型定义、PLC地址映射和数据结构
- * @author Stability Retention System Team
- * @version 1.0
- * @date 2023-06-01
+ * @author VijaySue
+ * @version 2.0
+ * @date 2024-3-11
  * @platform Windows开发，Linux远程调试
  */
 #pragma once

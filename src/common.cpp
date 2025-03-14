@@ -2,12 +2,12 @@
  * @file common.cpp
  * @brief 公共工具函数实现
  * @details 实现设备状态到JSON的转换等公共功能
- * @author Stability Retention System Team
- * @version 1.0
- * @date 2023-06-01
+ * @author VijaySue
+ * @version 2.0
+ * @date 2024-3-11
  * @platform Windows开发，Linux远程调试
  */
-#include "common.h"
+#include "../include/common.h"
 #include <nlohmann/json.hpp>
 #include <chrono>
 

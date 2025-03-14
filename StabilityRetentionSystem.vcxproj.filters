@@ -2,20 +2,68 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <None Include="makefile" />
+    <None Include="config\config.ini">
+      <Filter>config</Filter>
+    </None>
+    <None Include="config\logging.conf">
+      <Filter>config</Filter>
+    </None>
+    <None Include="scripts\install_service.sh">
+      <Filter>scripts</Filter>
+    </None>
+    <None Include="scripts\uninstall_service.sh">
+      <Filter>scripts</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="callback_client.cpp" />
-    <ClCompile Include="plc_manager.cpp" />
-    <ClCompile Include="server.cpp" />
-    <ClCompile Include="task_manager.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="common.cpp" />
+    <ClInclude Include="include\task_manager.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\server.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\plc_manager.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\common.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\callback_client.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="callback_client.h" />
-    <ClInclude Include="common.h" />
-    <ClInclude Include="plc_manager.h" />
-    <ClInclude Include="server.h" />
-    <ClInclude Include="task_manager.h" />
+    <Filter Include="include">
+      <UniqueIdentifier>{21d17588-67e6-4255-bcb4-c88966c3b1a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{f0a3b4b5-67ae-4440-ad4c-77a2ba8f5c74}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="config">
+      <UniqueIdentifier>{db6149af-5c5b-4e5a-bdaf-5b1faedd39bf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="scripts">
+      <UniqueIdentifier>{6edbc51b-2c82-4bf2-9c43-7029d122b63b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\callback_client.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\common.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\plc_manager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\server.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\task_manager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

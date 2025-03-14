@@ -1,11 +1,17 @@
-// callback_client.h
+/**
+ * @file callback_client.h
+ * @brief 回调客户端类定义
+ * @details 负责向边缘控制系统发送回调通知，实现异步操作的状态反馈
+ * @author VijaySue
+ * @date 2024-3-11
+ */
 #pragma once  
 #include <cpprest/http_client.h>
 #include <string>
 
 /**
  * @brief 回调客户端单例，用于向边缘控制系统发送回调通知
- * @note 根据文档3.1-3.3章节回调接口规范实现
+ * @note 根据文档回调接口规范实现
  */
 class CallbackClient {
 public:

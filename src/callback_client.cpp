@@ -1,5 +1,13 @@
+/**
+ * @file callback_client.cpp
+ * @brief 回调客户端实现
+ * @details 实现向边缘控制系统发送回调通知的功能
+ * @author VijaySue
+ * @date 2024-3-11
+ */
+
 // callback_client.cpp
-#include "callback_client.h"
+#include "../include/callback_client.h"
 #include <spdlog/spdlog.h>
 
 const utility::string_t CallbackClient::EDGE_CALLBACK_BASE_URL = U("http://edge-system/api");

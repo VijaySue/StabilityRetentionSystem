@@ -2,11 +2,11 @@
  * @file plc_manager.cpp
  * @brief PLC通信管理器实现
  * @details 处理与西门子S7 PLC的Modbus TCP通信，读写PLC数据并解析状态
- * @author Stability Retention System Team
- * @version 1.0
- * @date 2023-06-01
+ * @author VijaySue
+ * @version 2.0
+ * @date 2024-3-11
  */
-#include "plc_manager.h"
+#include "../include/plc_manager.h"
 #include <spdlog/spdlog.h>
 #include <map>
 #include <sstream>

@@ -1,4 +1,10 @@
-// plc_manager.h
+/**
+ * @file plc_manager.h
+ * @brief PLC通信管理类定义
+ * @details 负责与PLC设备进行通信，实现Modbus TCP协议的数据读写操作
+ * @author VijaySue
+ * @date 2024-3-11
+ */
 #pragma once
 #include "common.h"
 #include <mutex>

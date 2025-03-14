@@ -60,7 +60,7 @@
 {
     "msg": "success",
     "status": "online",
-    "version": "1.0",
+    "version": "2.0",
     "timestamp": 1686532271000
 }
 ```
@@ -89,10 +89,16 @@
 ```json
 {
     "msg": "success",
-    "version": "1.0",
-    "buildTime": "2023-06-01 12:00:00",
-    "platform": "Linux-5.15.0-91-generic",
-    "libmodbus": "3.1.6",
+    "version": "2.0",
+    "buildTime": "2024-03-11 12:00:00",
+    "platform": "Ubuntu Server 24.04",
+    "dependencies": {
+        "cpprestsdk": "2.10.19",
+        "nlohmann-json": "3.11.3",
+        "spdlog": "1.9.2",
+        "fmt": "9.1.0",
+        "libmodbus": "3.1.10"
+    },
     "plcHost": "192.168.1.10",
     "plcPort": 502
 }
@@ -106,7 +112,7 @@
 | version | string | 系统版本号 |
 | buildTime | string | 构建时间 |
 | platform | string | 运行平台 |
-| libmodbus | string | libmodbus 库版本 |
+| dependencies | object | 依赖库版本信息 |
 | plcHost | string | PLC 设备主机地址 |
 | plcPort | integer | PLC 设备端口号 |
 

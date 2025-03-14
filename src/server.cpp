@@ -2,15 +2,15 @@
  * @file server.cpp
  * @brief RESTful API服务器实现
  * @details 提供HTTP接口以获取设备状态和控制设备操作
- * @author Stability Retention System Team
- * @version 1.0
- * @date 2023-06-01
+ * @author VijaySue
+ * @version 2.0
+ * @date 2024-3-11
  */
-#include "server.h"
+#include "../include/server.h"
 #include <spdlog/spdlog.h>
-#include "task_manager.h"
-#include "common.h"
-#include "plc_manager.h"
+#include "../include/task_manager.h"
+#include "../include/common.h"
+#include "../include/plc_manager.h"
 #include <nlohmann/json.hpp>
 
 using namespace web;

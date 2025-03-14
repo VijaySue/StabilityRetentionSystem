@@ -1,8 +1,15 @@
+/**
+ * @file main.cpp
+ * @brief 稳定性保持系统主程序入口
+ * @author VijaySue
+ * @date 2024-3-11
+ */
+
 // main.cpp
 #include <spdlog/spdlog.h>
 #include <cpprest/uri_builder.h>
-#include "server.h"
-#include "common.h"
+#include "../include/server.h"
+#include "../include/common.h"
 #include <csignal>
 
 // 信号处理
