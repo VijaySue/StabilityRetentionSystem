@@ -30,7 +30,7 @@ all: $(TARGET)
 
 # 链接目标文件生成可执行文件（简化链接命令）
 $(TARGET): $(OBJ_FILES)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBRARY_DIRS) $(LIBRARIES)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBRARY_DIRS) $(LIBRARIES) -lmodbus
 
 # 编译每个 .cpp 文件为目标文件
 $(SRC_DIR)/%.o: $(SRC_DIR)/%.cpp
