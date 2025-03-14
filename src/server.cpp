@@ -10,6 +10,7 @@
 #include "../include/task_manager.h"
 #include "../include/common.h"
 #include "../include/plc_manager.h"
+#include "../include/config_manager.h"
 #include <nlohmann/json.hpp>
 
 using namespace web;
@@ -17,34 +18,19 @@ using namespace web::http;
 using namespace web::http::experimental::listener;
 
 /**
- * @brief 获取系统平台信息
- * @return 平台信息字符串
- */
-std::string get_platform_info() {
-    #ifdef _WIN32
-        return "Windows";
-    #elif __linux__
-        return "Linux";
-    #elif __APPLE__
-        return "macOS";
-    #else
-        return "Unknown Platform";
-    #endif
-}
-
-/**
  * @brief 获取libmodbus库版本
  * @return 版本信息字符串
+ * @details 由于libmodbus没有直接提供版本信息API，返回编译时信息
  */
 std::string get_libmodbus_version() {
-    // libmodbus没有直接提供版本信息的API，返回编译时信息
     return "libmodbus (编译时版本)";
 }
 
 /**
  * @brief 创建错误响应JSON
  * @param message 错误信息
- * @return JSON错误响应
+ * @return JSON错误响应对象
+ * @details 创建标准格式的错误响应，包含msg和error字段
  */
 web::json::value create_error_response(const std::string& message) {
     web::json::value response;
@@ -56,6 +42,7 @@ web::json::value create_error_response(const std::string& message) {
 /**
  * @brief 构造函数 - 初始化HTTP监听器
  * @param url HTTP监听URL
+ * @details 创建HTTP服务器并初始化路由规则
  */
 StabilityServer::StabilityServer(const utility::string_t& url) : m_listener(url) {
     init_routes();
@@ -63,7 +50,9 @@ StabilityServer::StabilityServer(const utility::string_t& url) : m_listener(url)
 
 /**
  * @brief 初始化路由规则
- * @details 注册不同HTTP路径的处理函数
+ * @details 注册不同HTTP路径的处理函数，包括：
+ *          - GET请求：健康检查、设备状态、系统信息
+ *          - POST请求：支撑控制、平台控制、电源控制等
  */
 void StabilityServer::init_routes() {
     // 统一处理GET请求
@@ -126,6 +115,7 @@ void StabilityServer::init_routes() {
 /**
  * @brief 健康检查处理
  * @param request HTTP请求对象
+ * @details 返回系统在线状态、版本号和时间戳
  */
 void StabilityServer::handle_health(http_request request) {
     SPDLOG_DEBUG("处理健康检查请求");
@@ -140,6 +130,7 @@ void StabilityServer::handle_health(http_request request) {
 /**
  * @brief 系统信息处理
  * @param request HTTP请求对象
+ * @details 返回系统版本、构建时间、平台信息、依赖库版本等
  */
 void StabilityServer::handle_system_info(http_request request) {
     try {
@@ -147,7 +138,7 @@ void StabilityServer::handle_system_info(http_request request) {
         response["msg"] = web::json::value::string("success");
         response["version"] = web::json::value::string(constants::VERSION);
         response["buildTime"] = web::json::value::string(__DATE__ " " __TIME__);
-        response["platform"] = web::json::value::string(get_platform_info());
+        response["platform"] = web::json::value::string("Linux");
         response["libmodbus"] = web::json::value::string(get_libmodbus_version());
         
         // 访问PLC配置信息
@@ -166,8 +157,10 @@ void StabilityServer::handle_system_info(http_request request) {
  * @brief 支撑控制处理
  * @param request HTTP请求对象
  * @details 处理刚性支撑/柔性复位控制请求
- *          请求参数：taskId, defectId, state
- *          state取值：rigid(刚性支撑), flexible(柔性复位)
+ *          请求参数：
+ *          - taskId: 任务ID
+ *          - defectId: 缺陷ID
+ *          - state: 支撑状态(rigid/flexible)
  */
 void StabilityServer::handle_support_control(http_request request) {
     request.extract_json()
@@ -205,7 +198,7 @@ void StabilityServer::handle_support_control(http_request request) {
                 return;
             }
             
-            // 创建异步任务（直接使用接口定义的操作名称）
+            // 创建异步任务
             TaskManager::instance().create_task(taskId, defectId, state);
 
             // 返回成功响应
@@ -231,8 +224,11 @@ void StabilityServer::handle_support_control(http_request request) {
  * @brief 作业平台升高/降低控制
  * @param request HTTP请求对象
  * @details 处理平台升高/降低控制请求
- *          请求参数：taskId, defectId, platformNum, state
- *          state取值：up(上升), down(下降)
+ *          请求参数：
+ *          - taskId: 任务ID
+ *          - defectId: 缺陷ID
+ *          - platformNum: 平台编号(1/2)
+ *          - state: 控制状态(up/down)
  */
 void StabilityServer::handle_platform_height_control(http_request request) {
     request.extract_json()
@@ -282,7 +278,7 @@ void StabilityServer::handle_platform_height_control(http_request request) {
                 return;
             }
             
-            // 创建异步任务（直接使用接口定义的操作名称，平台编号作为target）
+            // 创建异步任务
             TaskManager::instance().create_task(
                 taskId,
                 defectId,
@@ -314,8 +310,11 @@ void StabilityServer::handle_platform_height_control(http_request request) {
  * @brief 作业平台调平/调平复位控制
  * @param request HTTP请求对象
  * @details 处理平台调平/调平复位控制请求
- *          请求参数：taskId, defectId, platformNum, state
- *          state取值：level(调平), level_reset(复位)
+ *          请求参数：
+ *          - taskId: 任务ID
+ *          - defectId: 缺陷ID
+ *          - platformNum: 平台编号(1/2)
+ *          - state: 控制状态(level/level_reset)
  */
 void StabilityServer::handle_platform_horizontal_control(http_request request) {
     request.extract_json()
@@ -365,7 +364,7 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
                 return;
             }
             
-            // 创建异步任务（直接使用接口定义的操作名称，平台编号作为target）
+            // 创建异步任务
             TaskManager::instance().create_task(
                 taskId,
                 defectId,
@@ -397,8 +396,8 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
  * @brief 电源控制处理
  * @param request HTTP请求对象
  * @details 处理电加热电源的开关控制请求
- *          请求参数：state
- *          state取值：on(开启), off(关闭)
+ *          请求参数：
+ *          - state: 电源状态(on/off)
  */
 void StabilityServer::handle_power_control(http_request request) {
     request.extract_json()
@@ -430,10 +429,8 @@ void StabilityServer::handle_power_control(http_request request) {
                 return;
             }
             
-            // 映射操作名称
+            // 映射操作名称并执行
             std::string operation = (state == "on") ? "power_on" : "power_off";
-            
-            // 执行电源控制操作（无需异步处理，直接执行）
             PLCManager::instance().execute_operation(operation);
 
             // 返回成功响应
@@ -456,8 +453,8 @@ void StabilityServer::handle_power_control(http_request request) {
  * @brief 电机控制处理
  * @param request HTTP请求对象
  * @details 处理油泵电机的启停控制请求
- *          请求参数：state
- *          state取值：start(启动), stop(停止)
+ *          请求参数：
+ *          - state: 电机状态(start/stop)
  */
 void StabilityServer::handle_motor_control(http_request request) {
     request.extract_json()
@@ -489,10 +486,8 @@ void StabilityServer::handle_motor_control(http_request request) {
                 return;
             }
             
-            // 映射操作名称
+            // 映射操作名称并执行
             std::string operation = (state == "start") ? "motor_start" : "motor_stop";
-            
-            // 执行电机控制操作（无需异步处理，直接执行）
             PLCManager::instance().execute_operation(operation);
 
             // 返回成功响应
@@ -515,8 +510,8 @@ void StabilityServer::handle_motor_control(http_request request) {
  * @brief 操作模式控制
  * @param request HTTP请求对象
  * @details 处理系统操作模式设置请求
- *          请求参数：mode
- *          mode取值：auto(自动), manual(手动)
+ *          请求参数：
+ *          - mode: 操作模式(auto/manual)
  */
 void StabilityServer::handle_operation_mode(http_request request) {
     request.extract_json()
@@ -548,7 +543,7 @@ void StabilityServer::handle_operation_mode(http_request request) {
                 return;
             }
             
-            // 执行操作模式设置（无需异步，直接执行）
+            // 执行操作模式设置
             PLCManager::instance().execute_operation(mode);
 
             // 返回成功响应
@@ -570,6 +565,9 @@ void StabilityServer::handle_operation_mode(http_request request) {
 /**
  * @brief 设备状态获取
  * @param request HTTP请求对象
+ * @details 获取当前设备状态信息，支持通过fields参数筛选返回字段
+ *          查询参数：
+ *          - fields: 指定返回的字段，多个字段用逗号分隔
  */
 void StabilityServer::handle_device_state(http_request request) {
     try {
@@ -645,7 +643,10 @@ void StabilityServer::handle_device_state(http_request request) {
  * @brief 错误上报处理
  * @param request HTTP请求对象
  * @details 处理系统错误和异常上报
- *          请求参数：alarm - 报警信息
+ *          请求参数：
+ *          - alarm: 报警信息（必填）
+ *          - source: 报警来源（可选）
+ *          - level: 报警级别（可选）
  */
 void StabilityServer::handle_error_report(http_request request) {
     request.extract_json()
@@ -699,4 +700,74 @@ void StabilityServer::handle_error_report(http_request request) {
             request.reply(status_codes::BadRequest, error_response);
         }
             });
+}
+
+/**
+ * @brief 请求认证处理
+ * @param request HTTP请求对象
+ * @return 认证是否通过
+ * @details 检查IP白名单和基本认证
+ */
+bool StabilityServer::authenticate_request(const http_request& request) {
+    auto& config = ConfigManager::instance();
+    
+    // 检查IP白名单
+    std::string client_ip = request.remote_address();
+    if (!config.is_ip_allowed(client_ip)) {
+        SPDLOG_WARN("IP地址 {} 不在白名单中", client_ip);
+        return false;
+    }
+    
+    // 检查基本认证
+    if (config.get_basic_auth_enabled()) {
+        auto auth_header = request.headers().find("Authorization");
+        if (auth_header == request.headers().end()) {
+            SPDLOG_WARN("请求缺少认证头");
+            return false;
+        }
+        
+        std::string auth = auth_header->second;
+        if (auth.substr(0, 6) != "Basic ") {
+            SPDLOG_WARN("认证头格式错误");
+            return false;
+        }
+        
+        // 解码Base64认证信息
+        std::string credentials = auth.substr(6);
+        std::vector<unsigned char> decoded_bytes = utility::conversions::from_base64(credentials);
+        std::string decoded(decoded_bytes.begin(), decoded_bytes.end());
+        
+        size_t colon_pos = decoded.find(':');
+        if (colon_pos == std::string::npos) {
+            SPDLOG_WARN("认证信息格式错误");
+            return false;
+        }
+        
+        std::string username = decoded.substr(0, colon_pos);
+        std::string password = decoded.substr(colon_pos + 1);
+        
+        if (username != config.get_username() || password != config.get_password()) {
+            SPDLOG_WARN("用户名或密码错误");
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+/**
+ * @brief 统一请求处理入口
+ * @param request HTTP请求对象
+ * @details 处理所有请求的认证和路由
+ */
+void StabilityServer::handle_request(const http_request& request) {
+    // 添加安全验证
+    if (!authenticate_request(request)) {
+        http_response response(status_codes::Unauthorized);
+        response.headers().add("WWW-Authenticate", "Basic realm=\"StabilityRetentionSystem\"");
+        request.reply(response);
+        return;
+    }
+    
+    // ... existing request handling code ...
 }

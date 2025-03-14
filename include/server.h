@@ -40,6 +40,9 @@ private:
      */
     void init_routes();
 
+    bool authenticate_request(const web::http::http_request& request);
+    void handle_request(const web::http::http_request& request);
+
     // 接口处理函数
     /**
      * @brief 系统状态检测接口

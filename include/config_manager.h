@@ -11,6 +11,7 @@
 #include <string>
 #include <memory>
 #include <cpprest/json.h>
+#include <vector>
 
 /**
  * @brief 配置管理类（单例）
@@ -78,6 +79,13 @@ public:
      */
     std::string get_log_level() const { return log_level; }
 
+    bool get_basic_auth_enabled() const { return basic_auth_enabled_; }
+    const std::string& get_username() const { return username_; }
+    const std::string& get_password() const { return password_; }
+    bool get_ip_whitelist_enabled() const { return ip_whitelist_enabled_; }
+    const std::vector<std::string>& get_allowed_ips() const { return allowed_ips_; }
+    bool is_ip_allowed(const std::string& ip) const;
+
 private:
     /**
      * @brief 私有构造函数
@@ -95,4 +103,10 @@ private:
     
     // 日志配置
     std::string log_level = "info";       // 默认日志级别
+
+    bool basic_auth_enabled_;
+    std::string username_;
+    std::string password_;
+    bool ip_whitelist_enabled_;
+    std::vector<std::string> allowed_ips_;
 }; 

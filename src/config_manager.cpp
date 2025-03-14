@@ -99,9 +99,57 @@ bool ConfigManager::load_config(const std::string& config_file) {
             else if (current_section == "logging") {
                 if (key == "level") log_level = value;
             }
+            else if (current_section == "security") {
+                if (key == "basic_auth") basic_auth_enabled_ = (value == "true" || value == "1");
+                else if (key == "username") username_ = value;
+                else if (key == "password") password_ = value;
+                else if (key == "ip_whitelist") ip_whitelist_enabled_ = (value == "true" || value == "1");
+                else if (key == "allowed_ips") {
+                    // 解析IP白名单
+                    std::istringstream iss(value);
+                    std::string ip;
+                    allowed_ips_.clear();
+                    while (std::getline(iss, ip, ',')) {
+                        // 去除空格
+                        ip.erase(0, ip.find_first_not_of(" "));
+                        ip.erase(ip.find_last_not_of(" ") + 1);
+                        if (!ip.empty()) {
+                            allowed_ips_.push_back(ip);
+                        }
+                    }
+                }
+            }
         }
+    }
+    
+    // 如果没有找到security节，使用默认安全配置
+    if (current_section != "security") {
+        basic_auth_enabled_ = false;
+        ip_whitelist_enabled_ = false;
     }
     
     SPDLOG_INFO("成功加载配置文件: {}", config_path.string());
     return true;
+}
+
+bool ConfigManager::is_ip_allowed(const std::string& ip) const {
+    if (!ip_whitelist_enabled_) {
+        return true;  // 如果未启用白名单，允许所有IP
+    }
+    
+    // 检查IP是否在白名单中
+    for (const auto& allowed_ip : allowed_ips_) {
+        // 支持CIDR格式的IP地址
+        if (allowed_ip.find('/') != std::string::npos) {
+            // TODO: 实现CIDR匹配
+            // 这里需要添加CIDR匹配的实现
+            continue;
+        }
+        
+        if (ip == allowed_ip) {
+            return true;
+        }
+    }
+    
+    return false;
 } 

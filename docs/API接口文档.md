@@ -58,9 +58,8 @@
 
 ```json
 {
-    "msg": "success",
     "status": "online",
-    "version": "2.0",
+    "version": "1.0.0",
     "timestamp": 1686532271000
 }
 ```
@@ -69,7 +68,6 @@
 
 | 参数名 | 类型 | 描述 |
 |-------|------|------|
-| msg | string | 请求结果，成功为 "success" |
 | status | string | 系统状态，值为 "online" |
 | version | string | 系统版本号 |
 | timestamp | integer | 当前时间戳（毫秒） |
@@ -89,16 +87,10 @@
 ```json
 {
     "msg": "success",
-    "version": "2.0",
+    "version": "1.0.0",
     "buildTime": "2024-03-11 12:00:00",
-    "platform": "Ubuntu Server 24.04",
-    "dependencies": {
-        "cpprestsdk": "2.10.19",
-        "nlohmann-json": "3.11.3",
-        "spdlog": "1.9.2",
-        "fmt": "9.1.0",
-        "libmodbus": "3.1.10"
-    },
+    "platform": "Linux",
+    "libmodbus": "libmodbus (编译时版本)",
     "plcHost": "192.168.1.10",
     "plcPort": 502
 }
@@ -112,7 +104,7 @@
 | version | string | 系统版本号 |
 | buildTime | string | 构建时间 |
 | platform | string | 运行平台 |
-| dependencies | object | 依赖库版本信息 |
+| libmodbus | string | libmodbus库版本信息 |
 | plcHost | string | PLC 设备主机地址 |
 | plcPort | integer | PLC 设备端口号 |
 
@@ -141,28 +133,22 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 ```json
 {
     "msg": "success",
-    "liftState": "停止",
-    "liftPressure": 2.5,
     "operationMode": "自动",
     "emergencyStop": "正常",
+    "oilPumpStatus": "停止",
     "cylinderState": "下降停止",
     "platform1State": "上升停止",
     "platform2State": "下降停止",
-    "alarmStatus": "正常",
-    "levelingStatus": "停止",
     "heaterStatus": "停止",
     "coolingStatus": "停止",
+    "alarmStatus": "正常",
+    "levelingStatus": "停止",
     "cylinderPressure": 1.5,
     "platform1Pressure": 2.5,
     "platform2Pressure": 2.3,
     "tiltAngle": 0.05,
     "platformPosition": 120,
-    "timestamp": 1686532271000,
-    "raw_data": {
-        "vb_1000": 2,
-        "vb_1001": 1
-        // ... 更多原始数据
-    }
+    "timestamp": 1686532271000
 }
 ```
 
@@ -171,24 +157,22 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 | 参数名 | 类型 | 描述 |
 |-------|------|------|
 | msg | string | 请求结果，成功为 "success" |
-| liftState | string | 升降平台状态，可能的值：上升/上升停止/下降/下降停止/停止 |
-| liftPressure | number | 升降平台压力值 (MPa) |
 | operationMode | string | 操作模式，可能的值：自动/手动 |
 | emergencyStop | string | 急停状态，可能的值：复位/急停 |
+| oilPumpStatus | string | 油泵状态，可能的值：停止/启动 |
 | cylinderState | string | 刚柔缸状态，可能的值：下降停止/下降加压/上升停止/上升 |
 | platform1State | string | 升降平台1状态，可能的值：上升/上升停止/下降/下降停止 |
 | platform2State | string | 升降平台2状态，可能的值：上升/上升停止/下降/下降停止 |
-| alarmStatus | string | 报警状态，可能的值：油温低/油温高/液位低/液位高/滤芯堵 |
-| levelingStatus | string | 电动缸调平状态，可能的值：停止/启动 |
 | heaterStatus | string | 电加热状态，可能的值：停止/启动 |
 | coolingStatus | string | 风冷状态，可能的值：停止/启动 |
+| alarmStatus | string | 报警状态，可能的值：油温低/油温高/液位低/液位高/滤芯堵 |
+| levelingStatus | string | 电动缸调平状态，可能的值：停止/启动 |
 | cylinderPressure | number | 刚柔缸下降停止压力值 (MPa) |
 | platform1Pressure | number | 升降平台1上升停止压力值 (MPa) |
 | platform2Pressure | number | 升降平台2上升停止压力值 (MPa) |
 | tiltAngle | number | 平台倾斜角度 (度) |
 | platformPosition | integer | 平台位置信息 (mm) |
 | timestamp | integer | 数据时间戳 (毫秒) |
-| raw_data | object | PLC原始数据，包含VB和VW地址的原始值 |
 
 ### 4. 支撑控制
 
@@ -238,25 +222,9 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 | state | string | 支撑状态 |
 | status | string | 任务状态，值为 "processing" |
 
-**回调说明**：
-
-当任务完成后，系统会向信息平台发送回调请求：
-
-- 请求地址：`/stability/support/cback`（由信息平台提供）
-- 请求方式：POST
-- 请求参数：
-
-```json
-{
-    "taskId": 12345,
-    "defectId": 67890,
-    "state": "success"
-}
-```
-
 ### 5. 平台高度控制
 
-**接口描述**：控制升降平台高度
+**接口描述**：控制平台升降高度
 
 **请求方式**：POST
 
@@ -268,7 +236,7 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 |-------|------|-----|------|
 | taskId | integer | 是 | 任务ID |
 | defectId | integer | 是 | 缺陷ID |
-| platformNum | integer | 是 | 平台编号，值为 1 或 2 |
+| platformNum | integer | 是 | 平台编号，1或2 |
 | state | string | 是 | 控制状态，可能的值：`up`(上升) 或 `down`(下降) |
 
 **请求示例**：
@@ -306,26 +274,9 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 | state | string | 控制状态 |
 | status | string | 任务状态，值为 "processing" |
 
-**回调说明**：
+### 6. 平台调平控制
 
-当任务完成后，系统会向信息平台发送回调请求：
-
-- 请求地址：`/stability/platformHeight/cback`（由信息平台提供）
-- 请求方式：POST
-- 请求参数：
-
-```json
-{
-    "taskId": 12345,
-    "defectId": 67890,
-    "platformNum": 1,
-    "state": "success"
-}
-```
-
-### 6. 平台水平控制
-
-**接口描述**：控制平台水平调平
+**接口描述**：控制平台水平调整
 
 **请求方式**：POST
 
@@ -337,7 +288,7 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 |-------|------|-----|------|
 | taskId | integer | 是 | 任务ID |
 | defectId | integer | 是 | 缺陷ID |
-| platformNum | integer | 是 | 平台编号，值为 1 或 2 |
+| platformNum | integer | 是 | 平台编号，1或2 |
 | state | string | 是 | 控制状态，可能的值：`level`(调平) 或 `level_reset`(调平复位) |
 
 **请求示例**：
@@ -375,26 +326,9 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 | state | string | 控制状态 |
 | status | string | 任务状态，值为 "processing" |
 
-**回调说明**：
-
-当任务完成后，系统会向信息平台发送回调请求：
-
-- 请求地址：`/stability/platformHorizontal/cback`（由信息平台提供）
-- 请求方式：POST
-- 请求参数：
-
-```json
-{
-    "taskId": 12345,
-    "defectId": 67890,
-    "platformNum": 1,
-    "state": "success"
-}
-```
-
 ### 7. 电源控制
 
-**接口描述**：控制设备电源
+**接口描述**：控制系统电源状态
 
 **请求方式**：POST
 
@@ -432,7 +366,7 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 
 ### 8. 电机控制
 
-**接口描述**：控制电机状态
+**接口描述**：控制油泵电机的启动和停止
 
 **请求方式**：POST
 
@@ -470,7 +404,7 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 
 ### 9. 操作模式控制
 
-**接口描述**：控制设备操作模式
+**接口描述**：切换系统操作模式
 
 **请求方式**：POST
 
@@ -480,7 +414,7 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 
 | 参数名 | 类型 | 必填 | 描述 |
 |-------|------|-----|------|
-| mode | string | 是 | 操作模式，可能的值：`auto`(自动) 或 `manual`(手动) |
+| mode | string | 是 | 操作模式，可能的值：`auto`(自动模式) 或 `manual`(手动模式) |
 
 **请求示例**：
 
@@ -508,7 +442,7 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 
 ### 10. 错误上报
 
-**接口描述**：上报错误信息
+**接口描述**：上报系统错误和异常信息
 
 **请求方式**：POST
 
@@ -520,14 +454,14 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 |-------|------|-----|------|
 | alarm | string | 是 | 报警信息 |
 | source | string | 否 | 报警来源 |
-| level | string | 否 | 报警级别，可能的值：info/warning/error/critical |
+| level | string | 否 | 报警级别 |
 
 **请求示例**：
 
 ```json
 {
-    "alarm": "平台1压力过高",
-    "source": "platform_control",
+    "alarm": "油温过高异常",
+    "source": "油泵控制系统",
     "level": "warning"
 }
 ```
@@ -537,7 +471,7 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 ```json
 {
     "msg": "success",
-    "alarm": "平台1压力过高",
+    "alarm": "油温过高异常",
     "timestamp": "1686532271000"
 }
 ```
@@ -548,7 +482,25 @@ GET /stability/device/state?fields=liftState,liftPressure,operationMode
 |-------|------|------|
 | msg | string | 请求结果，成功为 "success" |
 | alarm | string | 报警信息 |
-| timestamp | string | 时间戳 |
+| timestamp | string | 时间戳(毫秒) |
+
+## 安全认证
+
+系统支持基于IP白名单和基本认证的安全机制：
+
+### IP白名单
+
+系统支持IP白名单机制，仅允许指定IP地址访问API接口。
+
+### 基本认证
+
+系统支持HTTP基本认证(Basic Authentication)，需要在请求头中提供认证信息：
+
+```
+Authorization: Basic base64(username:password)
+```
+
+未提供认证信息或认证失败时，系统会返回401状态码，并要求客户端提供认证信息。
 
 ## 错误码说明
 

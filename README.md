@@ -140,7 +140,7 @@ level = info             # 日志级别：trace, debug, info, warning, error, cr
 
 ```bash
 # 如果已安装
-/opt/stability/bin/stability_server
+/opt/StabilityRetentionSystem/bin/stability_server
 
 # 或直接从项目目录运行
 ./bin/stability_server
@@ -216,14 +216,49 @@ curl -X POST http://localhost:8080/stability/platform/height \
 
 ### 代码结构
 
-项目主要代码如下：
+项目目录结构如下：
 
-- main.cpp：程序入口点
-- server.h/server.cpp：HTTP服务器模块
-- plc_manager.h/plc_manager.cpp：PLC通信模块
-- task_manager.h/task_manager.cpp：任务管理模块
-- common.h/common.cpp：公共功能和工具
-- callback_client.h/callback_client.cpp：回调客户端
+```
+StabilityRetentionSystem/
+├── bin/                 # 编译后的可执行文件目录
+├── config/             # 配置文件目录
+│   ├── config.ini      # 主配置文件
+│   └── logging.conf    # 日志配置文件
+├── docs/               # 文档目录
+│   ├── API接口文档.md
+│   ├── 部署指南.md
+│   └── 其他文档...
+├── include/            # 头文件目录
+│   ├── server.h       # HTTP服务器模块
+│   ├── plc_manager.h  # PLC通信模块
+│   ├── task_manager.h # 任务管理模块
+│   ├── config_manager.h # 配置管理模块
+│   ├── common.h       # 公共功能和工具
+│   └── callback_client.h # 回调客户端
+├── lib/               # 第三方库目录
+├── logs/              # 日志文件目录
+├── scripts/           # 脚本文件目录
+├── src/               # 源代码目录
+│   ├── main.cpp      # 程序入口点
+│   ├── server.cpp    # HTTP服务器实现
+│   ├── plc_manager.cpp # PLC通信实现
+│   ├── task_manager.cpp # 任务管理实现
+│   ├── config_manager.cpp # 配置管理实现
+│   ├── common.cpp    # 公共功能实现
+│   └── callback_client.cpp # 回调客户端实现
+├── obj/               # 编译中间文件目录
+├── makefile          # 项目构建文件
+└── README.md         # 项目说明文档
+```
+
+主要模块说明：
+
+- **HTTP服务器模块**：基于C++ REST SDK实现，提供RESTful API接口
+- **PLC通信模块**：基于libmodbus实现与PLC设备的通信
+- **任务管理模块**：管理异步任务的创建、执行和状态跟踪
+- **配置管理模块**：管理系统配置参数，支持从INI文件加载配置
+- **公共功能模块**：提供日志、错误处理等通用功能
+- **回调客户端模块**：实现与上层系统的回调通信
 
 ### 编译构建
 
@@ -236,7 +271,6 @@ make
 # 清理项目
 make clean
 ```
-
 ### 贡献指南
 
 如果您想为项目做出贡献，请遵循以下步骤：
@@ -266,3 +300,4 @@ make clean
 | 1.1.0 | 2024-3-6 | 增加平台2控制功能 |
 | 1.2.0 | 2024-3-9 | 优化任务管理，增强错误处理 |
 | 2.0.0 | 2024-3-11 | 重构API接口，提升性能，更新开发环境 |
+
