@@ -150,9 +150,9 @@ void StabilityServer::handle_system_info(http_request request) {
         response["platform"] = web::json::value::string(get_platform_info());
         response["libmodbus"] = web::json::value::string(get_libmodbus_version());
         
-        // 访问PLC配置信息 - 现在PLCManager中这些成员是公开的
-        response["plcHost"] = web::json::value::string(PLCManager::PLC_IP_ADDRESS);
-        response["plcPort"] = web::json::value::number(PLCManager::PLC_PORT);
+        // 访问PLC配置信息
+        response["plcHost"] = web::json::value::string(PLCManager::get_plc_ip());
+        response["plcPort"] = web::json::value::number(PLCManager::get_plc_port());
         
         request.reply(web::http::status_codes::OK, response);
     }

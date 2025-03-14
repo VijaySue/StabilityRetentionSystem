@@ -31,6 +31,9 @@
     <ClInclude Include="include\callback_client.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\config_manager.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -63,6 +66,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\task_manager.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\config_manager.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>

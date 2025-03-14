@@ -108,6 +108,7 @@
   <ItemGroup>
     <ClInclude Include="include\callback_client.h" />
     <ClInclude Include="include\common.h" />
+    <ClInclude Include="include\config_manager.h" />
     <ClInclude Include="include\plc_manager.h" />
     <ClInclude Include="include\server.h" />
     <ClInclude Include="include\task_manager.h" />
@@ -115,6 +116,7 @@
   <ItemGroup>
     <ClCompile Include="src\callback_client.cpp" />
     <ClCompile Include="src\common.cpp" />
+    <ClCompile Include="src\config_manager.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\plc_manager.cpp" />
     <ClCompile Include="src\server.cpp" />

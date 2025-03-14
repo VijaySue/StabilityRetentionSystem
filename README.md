@@ -28,6 +28,11 @@
 - **设备状态管理器**：实时获取和解析设备状态数据
 - **任务管理器**：管理异步任务的创建、执行、状态跟踪
 - **配置管理器**：管理系统配置参数
+  - 采用单例模式设计，确保全局唯一配置实例
+  - 支持从INI格式的配置文件加载配置
+  - 提供服务器、PLC、日志等核心配置项
+  - 支持配置项默认值，确保系统在配置文件缺失时仍能正常运行
+  - 支持运行时动态加载配置
 - **日志系统**：基于spdlog实现的多级日志记录系统
 
 ## 技术栈
@@ -117,29 +122,21 @@ sudo make install
 [server]
 port = 8080              # API 服务监听端口
 host = 0.0.0.0           # API 服务监听地址，0.0.0.0表示监听所有接口
-worker_threads = 4       # 工作线程数
-timeout_ms = 5000        # 请求超时时间（毫秒）
 
 [plc]
 ip = 192.168.1.10        # PLC设备IP地址
 port = 502               # PLC设备Modbus TCP端口
-retry_count = 3          # 通信失败重试次数
-retry_interval_ms = 1000 # 重试间隔（毫秒）
-read_timeout_ms = 1000   # 读取超时时间（毫秒）
-
-[callback]
-url = http://edge-platform  # 信息平台基础URL
-retry_count = 3          # 回调失败重试次数
-retry_interval_ms = 5000 # 回调重试间隔（毫秒）
 
 [logging]
 level = info             # 日志级别：trace, debug, info, warning, error, critical
-file = logs/stability.log # 日志文件路径
-max_size = 10485760      # 单个日志文件最大尺寸（字节）
-max_files = 10           # 最大保留日志文件数
 ```
 
-2. 运行系统：
+2. 系统启动时会自动加载配置文件：
+   - 使用`ConfigManager`单例类加载配置
+   - 如果配置文件不存在，将使用默认配置值
+   - 支持运行时动态加载配置
+
+3. 运行系统：
 
 ```bash
 # 如果已安装
@@ -157,20 +154,9 @@ max_files = 10           # 最大保留日志文件数
 |------|------|------|---------|
 | server | port | HTTP服务器端口 | 8080 |
 | server | host | 服务器监听地址 | 0.0.0.0 |
-| server | worker_threads | 工作线程数 | 4 |
-| server | timeout_ms | 请求超时时间(毫秒) | 5000 |
 | plc | ip | PLC设备IP地址 | 192.168.1.10 |
 | plc | port | PLC设备端口 | 502 |
-| plc | retry_count | 通信失败重试次数 | 3 |
-| plc | retry_interval_ms | 重试间隔(毫秒) | 1000 |
-| plc | read_timeout_ms | 读取超时时间(毫秒) | 1000 |
-| callback | url | 信息平台基础URL | http://edge-platform |
-| callback | retry_count | 回调失败重试次数 | 3 |
-| callback | retry_interval_ms | 回调重试间隔(毫秒) | 5000 |
 | logging | level | 日志级别 | info |
-| logging | file | 日志文件路径 | logs/stability.log |
-| logging | max_size | 单个日志文件最大尺寸(字节) | 10485760 |
-| logging | max_files | 最大保留日志文件数 | 10 |
 
 ### API使用示例
 

@@ -10,6 +10,7 @@
 #include <cpprest/uri_builder.h>
 #include "../include/server.h"
 #include "../include/common.h"
+#include "../include/config_manager.h"
 #include <csignal>
 
 // 信号处理
@@ -18,65 +19,69 @@ std::mutex shutdown_mutex;
 bool shutdown_requested = false;
 
 void signal_handler(int signal) {
-    SPDLOG_INFO("收到信号: {}, 准备关闭服务", signal);
-    {
-        std::lock_guard<std::mutex> lock(shutdown_mutex);
-        shutdown_requested = true;
-    }
+    std::lock_guard<std::mutex> lock(shutdown_mutex);
+    shutdown_requested = true;
     shutdown_cv.notify_all();
 }
 
 int main(int argc, char* argv[]) {
-    // 配置日志格式
-    spdlog::set_level(spdlog::level::info);
-    spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] [%t] %v");
+    // 加载配置文件
+    if (!ConfigManager::instance().load_config("config/config.ini")) {
+        std::cerr << "无法加载配置文件，使用默认配置" << std::endl;
+    }
+
+    // 设置日志级别
+    std::string log_level = ConfigManager::instance().get_log_level();
+    if (log_level == "trace") spdlog::set_level(spdlog::level::trace);
+    else if (log_level == "debug") spdlog::set_level(spdlog::level::debug);
+    else if (log_level == "info") spdlog::set_level(spdlog::level::info);
+    else if (log_level == "warning") spdlog::set_level(spdlog::level::warn);
+    else if (log_level == "error") spdlog::set_level(spdlog::level::err);
+    else if (log_level == "critical") spdlog::set_level(spdlog::level::critical);
+    else spdlog::set_level(spdlog::level::info);
+
+    // 注册信号处理
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
 
     try {
-        // 注册信号处理
-        std::signal(SIGINT, signal_handler);
-        std::signal(SIGTERM, signal_handler);
+        // 获取服务器配置
+        std::string address = ConfigManager::instance().get_server_host();
+        int port = ConfigManager::instance().get_server_port();
 
-        // 构建服务器URI
-        utility::string_t address = U("0.0.0.0");
-        int port = 8080;
-
-        // 支持命令行参数覆盖默认端口
+        // 如果命令行指定了端口，则使用命令行参数
         if (argc > 1) {
-            try {
-                port = std::stoi(argv[1]);
-            }
-            catch (const std::exception& e) {
-                SPDLOG_WARN("命令行端口参数无效: {}, 使用默认端口", argv[1]);
-            }
+            port = std::stoi(argv[1]);
         }
 
-        web::uri_builder uri;
-        uri.set_scheme(U("http"))
-           .set_host(address)
-           .set_port(port);
+        // 构建服务器URL
+        utility::string_t url = web::uri_builder()
+            .set_scheme(U("http"))
+            .set_host(utility::conversions::to_string_t(address))
+            .set_port(port)
+            .to_uri()
+            .to_string();
 
-        // 启动HTTP服务器
-        StabilityServer server(uri.to_uri().to_string());
+        SPDLOG_INFO("启动服务器: {}", utility::conversions::to_utf8string(url));
+
+        // 创建并启动服务器
+        StabilityServer server(url);
         server.open().wait();
-
-        SPDLOG_INFO("稳定性保持系统服务已启动");
-        SPDLOG_INFO("监听地址: {}", utility::conversions::to_utf8string(uri.to_uri().to_string()));
-        SPDLOG_INFO("版本: {}", constants::VERSION);
 
         // 等待关闭信号
         {
             std::unique_lock<std::mutex> lock(shutdown_mutex);
-            shutdown_cv.wait(lock, [] { return shutdown_requested; });
+            shutdown_cv.wait(lock, []() { return shutdown_requested; });
         }
 
         // 关闭服务器
-        SPDLOG_INFO("正在关闭服务...");
         server.close().wait();
-        SPDLOG_INFO("服务已正常关闭");
-    }
-    catch (const std::exception& e) {
-        SPDLOG_CRITICAL("服务启动失败: {}", e.what());
+        SPDLOG_INFO("服务器已关闭");
+
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("服务器异常退出: {}", e.what());
         return 1;
     }
+
     return 0;
 }

@@ -84,8 +84,8 @@ public:
     void execute_operation(const std::string& operation);
 
     // PLC设备配置常量
-    static constexpr const char* PLC_IP_ADDRESS = "192.168.1.10"; // PLC的IP地址
-    static constexpr int PLC_PORT = 502;                          // Modbus TCP默认端口
+    static std::string get_plc_ip();  // PLC的IP地址
+    static int get_plc_port();        // Modbus TCP默认端口
 
 private:
     /**
@@ -96,8 +96,12 @@ private:
     PLCManager(const PLCManager&) = delete;              // 禁止拷贝构造
     PLCManager& operator=(const PLCManager&) = delete;   // 禁止赋值操作
     
-    modbus_t* m_modbus_ctx;    // Modbus上下文
+    // 静态成员变量
+    static modbus_t* m_modbus_ctx;    // Modbus上下文
+    static DeviceState m_current_state; // 当前设备状态
+    static std::mutex m_mutex;        // 互斥锁，保证线程安全
+    static std::thread m_monitor_thread; // 监控线程
+    static bool m_running;            // 运行状态标志
+    
     bool m_is_connected;       // 连接状态
-    std::mutex m_mutex;        // 互斥锁，保证线程安全
-    DeviceState m_current_state; // 当前设备状态
 };

@@ -7,11 +7,28 @@
  * @date 2024-3-11
  */
 #include "../include/plc_manager.h"
+#include "../include/config_manager.h"
 #include <spdlog/spdlog.h>
 #include <map>
 #include <sstream>
 #include <chrono>
 #include <thread>
+
+// 静态成员变量定义
+modbus_t* PLCManager::m_modbus_ctx = nullptr;
+DeviceState PLCManager::m_current_state;
+std::mutex PLCManager::m_mutex;
+std::thread PLCManager::m_monitor_thread;
+bool PLCManager::m_running = false;
+
+// PLC配置常量实现
+std::string PLCManager::get_plc_ip() {
+    return ConfigManager::instance().get_plc_ip();
+}
+
+int PLCManager::get_plc_port() {
+    return ConfigManager::instance().get_plc_port();
+}
 
 /**
  * @brief 获取单例实例
@@ -25,16 +42,15 @@ PLCManager& PLCManager::instance() {
 /**
  * @brief 构造函数 - 初始化PLC连接和设备状态
  */
-PLCManager::PLCManager() : m_modbus_ctx(nullptr), m_is_connected(false) {
+PLCManager::PLCManager() : m_is_connected(false) {
     // 使用初始化列表或赋值而不是memset初始化非平凡类型
-    // 原来的代码: memset(&m_current_state.raw, 0, sizeof(m_current_state.raw));
     m_current_state.raw = DeviceState::RawData(); // 使用默认构造函数初始化
     
     // 尝试初始连接
     if (connect_plc()) {
-        SPDLOG_INFO("PLCManager: 成功连接到PLC设备 {}:{}", PLC_IP_ADDRESS, PLC_PORT);
+        SPDLOG_INFO("PLCManager: 成功连接到PLC设备 {}:{}", get_plc_ip(), get_plc_port());
     } else {
-        SPDLOG_ERROR("PLCManager: 无法连接到PLC设备 {}:{}", PLC_IP_ADDRESS, PLC_PORT);
+        SPDLOG_ERROR("PLCManager: 无法连接到PLC设备 {}:{}", get_plc_ip(), get_plc_port());
     }
 }
 
@@ -61,7 +77,7 @@ bool PLCManager::connect_plc() {
 
     try {
         // 创建新的Modbus TCP连接
-        m_modbus_ctx = modbus_new_tcp(PLC_IP_ADDRESS, PLC_PORT);
+        m_modbus_ctx = modbus_new_tcp(get_plc_ip().c_str(), get_plc_port());
         if (m_modbus_ctx == nullptr) {
             SPDLOG_ERROR("创建Modbus连接失败: {}", modbus_strerror(errno));
             return false;
