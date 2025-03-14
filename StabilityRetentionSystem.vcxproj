@@ -125,7 +125,8 @@
       <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <RemotePostBuildEvent>
-      <Command>rm -rf bin obj</Command>
+      <Command>
+      </Command>
     </RemotePostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -133,7 +134,8 @@
       <CppLanguageStandard>c++17</CppLanguageStandard>
     </ClCompile>
     <RemotePostBuildEvent>
-      <Command>rm -rf bin obj</Command>
+      <Command>
+      </Command>
     </RemotePostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

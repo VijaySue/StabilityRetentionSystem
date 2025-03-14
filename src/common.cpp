@@ -3,7 +3,6 @@
  * @brief 公共工具函数实现
  * @details 实现设备状态到JSON的转换等公共功能
  * @author VijaySue
- * @version 2.0
  * @date 2024-3-11
  * @platform Windows开发，Linux远程调试
  */

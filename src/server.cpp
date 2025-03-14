@@ -3,7 +3,6 @@
  * @brief RESTful API服务器实现
  * @details 提供HTTP接口以获取设备状态和控制设备操作
  * @author VijaySue
- * @version 2.0
  * @date 2024-3-11
  */
 #include "../include/server.h"
