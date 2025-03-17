@@ -10,7 +10,7 @@
 #include "../include/callback_client.h"
 #include <spdlog/spdlog.h>
 
-const utility::string_t CallbackClient::EDGE_CALLBACK_BASE_URL = U("http://edge-system/api");
+const utility::string_t CallbackClient::EDGE_CALLBACK_BASE_URL = U("http://192.168.27.57:8080");
 
 CallbackClient& CallbackClient::instance() {
     static CallbackClient instance;
@@ -19,7 +19,7 @@ CallbackClient& CallbackClient::instance() {
 
 CallbackClient::CallbackClient()
     : m_client(EDGE_CALLBACK_BASE_URL) {  // 初始化边缘系统地址
-    SPDLOG_DEBUG("初始化回调客户端，目标地址: {}", utility::conversions::to_utf8string(EDGE_CALLBACK_BASE_URL));
+    SPDLOG_DEBUG("初始化回调客户端，目标地址: {}", EDGE_CALLBACK_BASE_URL);
 }
 
 void CallbackClient::send_support_callback(int taskId, int defectId, const std::string& state) {

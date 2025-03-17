@@ -7,11 +7,13 @@
 
 // main.cpp
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
 #include <cpprest/uri_builder.h>
 #include "../include/server.h"
 #include "../include/common.h"
 #include "../include/config_manager.h"
-#include <csignal>
+#include "../include/plc_manager.h"
+#include <filesystem>
 
 // 信号处理
 std::condition_variable_any shutdown_cv;
@@ -67,6 +69,9 @@ int main(int argc, char* argv[]) {
         // 创建并启动服务器
         StabilityServer server(url);
         server.open().wait();
+
+		// 连接PLC设备
+		PLCManager::instance().connect_plc();
 
         // 等待关闭信号
         {

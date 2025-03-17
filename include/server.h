@@ -40,21 +40,12 @@ private:
      */
     void init_routes();
 
-    bool authenticate_request(const web::http::http_request& request);
-    void handle_request(const web::http::http_request& request);
-
     // 接口处理函数
     /**
      * @brief 系统状态检测接口
      * @param request HTTP请求对象
      */
     void handle_health(web::http::http_request request);
-    
-    /**
-     * @brief 系统信息获取接口
-     * @param request HTTP请求对象
-     */
-    void handle_system_info(web::http::http_request request);
     
     /**
      * @brief 刚性支撑/柔性复位接口
@@ -73,24 +64,6 @@ private:
      * @param request HTTP请求对象
      */
     void handle_platform_horizontal_control(web::http::http_request request);
-    
-    /**
-     * @brief 电源控制接口
-     * @param request HTTP请求对象
-     */
-    void handle_power_control(web::http::http_request request);
-    
-    /**
-     * @brief 电机控制接口
-     * @param request HTTP请求对象
-     */
-    void handle_motor_control(web::http::http_request request);
-    
-    /**
-     * @brief 操作模式控制接口
-     * @param request HTTP请求对象
-     */
-    void handle_operation_mode(web::http::http_request request);
     
     /**
      * @brief 实时状态获取接口

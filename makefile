@@ -20,7 +20,7 @@ INCLUDE_DIRS := -I$(INCLUDE_DIR) -I/home/vijaysue/vcpkg/installed/x64-linux/incl
 # 第三方库链接路径（根据 vcpkg 安装路径调整）
 LIBRARY_DIRS := -L$(LIB_DIR) -L/home/vijaysue/vcpkg/installed/x64-linux/lib
 
-# 需要链接的第三方库（添加 OpenSSL 依赖）
+# 需要链接的第三方（添加 OpenSSL 依赖）
 LIBRARIES := -lspdlog -lcpprest -lpthread -lssl -lcrypto
 
 # 源文件列表

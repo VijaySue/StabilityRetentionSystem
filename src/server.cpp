@@ -66,9 +66,6 @@ void StabilityServer::init_routes() {
         else if (path == "/stability/device/state") {
             handle_device_state(request);
         }
-        else if (path == "/stability/system/info") {
-            handle_system_info(request);
-        }
         else {
             request.reply(status_codes::NotFound);
         }
@@ -87,15 +84,6 @@ void StabilityServer::init_routes() {
         }
         else if (path == "/stability/platformHorizontal/control") {
             handle_platform_horizontal_control(request);
-        }
-        else if (path == "/stability/power/control") {
-            handle_power_control(request);
-        }
-        else if (path == "/stability/motor/control") {
-            handle_motor_control(request);
-        }
-        else if (path == "/stability/operation/mode") {
-            handle_operation_mode(request);
         }
         else if (path == "/stability/error/report") {
             handle_error_report(request);
@@ -125,32 +113,6 @@ void StabilityServer::handle_health(http_request request) {
     response["timestamp"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count());
     request.reply(status_codes::OK, response);
-}
-
-/**
- * @brief 系统信息处理
- * @param request HTTP请求对象
- * @details 返回系统版本、构建时间、平台信息、依赖库版本等
- */
-void StabilityServer::handle_system_info(http_request request) {
-    try {
-        web::json::value response;
-        response["msg"] = web::json::value::string("success");
-        response["version"] = web::json::value::string(constants::VERSION);
-        response["buildTime"] = web::json::value::string(__DATE__ " " __TIME__);
-        response["platform"] = web::json::value::string("Linux");
-        response["libmodbus"] = web::json::value::string(get_libmodbus_version());
-        
-        // 访问PLC配置信息
-        response["plcHost"] = web::json::value::string(PLCManager::get_plc_ip());
-        response["plcPort"] = web::json::value::number(PLCManager::get_plc_port());
-        
-        request.reply(web::http::status_codes::OK, response);
-    }
-    catch (const std::exception& e) {
-        SPDLOG_ERROR("获取系统信息时发生异常: {}", e.what());
-        request.reply(web::http::status_codes::InternalError, create_error_response("获取系统信息失败"));
-    }
 }
 
 /**
@@ -393,176 +355,6 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
 }
 
 /**
- * @brief 电源控制处理
- * @param request HTTP请求对象
- * @details 处理电加热电源的开关控制请求
- *          请求参数：
- *          - state: 电源状态(on/off)
- */
-void StabilityServer::handle_power_control(http_request request) {
-    request.extract_json()
-        .then([=](web::json::value body) {
-        try {
-            SPDLOG_INFO("收到电源控制请求");
-            
-            // 参数校验
-            if (!body.has_field("state")) {
-                SPDLOG_WARN("电源控制请求参数不完整");
-                
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("请求参数不完整，需要state字段");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-
-            const utility::string_t state = body["state"].as_string();
-            SPDLOG_INFO("电源控制请求参数：state={}", state);
-
-            // 验证state参数的有效性
-            if (state != "on" && state != "off") {
-                SPDLOG_WARN("无效的电源控制状态: {}", state);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("无效的state值，必须为'on'或'off'");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-            
-            // 映射操作名称并执行
-            std::string operation = (state == "on") ? "power_on" : "power_off";
-            PLCManager::instance().execute_operation(operation);
-
-            // 返回成功响应
-            web::json::value response;
-            response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["state"] = web::json::value::string(state);
-            request.reply(status_codes::OK, response);
-        }
-        catch (const std::exception& e) {
-            SPDLOG_ERROR("电源控制请求处理失败: {}", e.what());
-            web::json::value error_response;
-            error_response["msg"] = web::json::value::string("error");
-            error_response["error"] = web::json::value::string(e.what());
-            request.reply(status_codes::BadRequest, error_response);
-        }
-            });
-}
-
-/**
- * @brief 电机控制处理
- * @param request HTTP请求对象
- * @details 处理油泵电机的启停控制请求
- *          请求参数：
- *          - state: 电机状态(start/stop)
- */
-void StabilityServer::handle_motor_control(http_request request) {
-    request.extract_json()
-        .then([=](web::json::value body) {
-        try {
-            SPDLOG_INFO("收到电机控制请求");
-            
-            // 参数校验
-            if (!body.has_field("state")) {
-                SPDLOG_WARN("电机控制请求参数不完整");
-                
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("请求参数不完整，需要state字段");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-
-            const utility::string_t state = body["state"].as_string();
-            SPDLOG_INFO("电机控制请求参数：state={}", state);
-
-            // 验证state参数的有效性
-            if (state != "start" && state != "stop") {
-                SPDLOG_WARN("无效的电机控制状态: {}", state);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("无效的state值，必须为'start'或'stop'");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-            
-            // 映射操作名称并执行
-            std::string operation = (state == "start") ? "motor_start" : "motor_stop";
-            PLCManager::instance().execute_operation(operation);
-
-            // 返回成功响应
-            web::json::value response;
-            response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["state"] = web::json::value::string(state);
-            request.reply(status_codes::OK, response);
-        }
-        catch (const std::exception& e) {
-            SPDLOG_ERROR("电机控制请求处理失败: {}", e.what());
-            web::json::value error_response;
-            error_response["msg"] = web::json::value::string("error");
-            error_response["error"] = web::json::value::string(e.what());
-            request.reply(status_codes::BadRequest, error_response);
-        }
-            });
-}
-
-/**
- * @brief 操作模式控制
- * @param request HTTP请求对象
- * @details 处理系统操作模式设置请求
- *          请求参数：
- *          - mode: 操作模式(auto/manual)
- */
-void StabilityServer::handle_operation_mode(http_request request) {
-    request.extract_json()
-        .then([=](web::json::value body) {
-        try {
-            SPDLOG_INFO("收到操作模式控制请求");
-            
-            // 参数校验
-            if (!body.has_field("mode")) {
-                SPDLOG_WARN("操作模式请求参数不完整");
-                
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("请求参数不完整，需要mode字段");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-
-            const utility::string_t mode = body["mode"].as_string();
-            SPDLOG_INFO("操作模式控制请求参数：mode={}", mode);
-
-            // 验证mode参数的有效性
-            if (mode != "auto" && mode != "manual") {
-                SPDLOG_WARN("无效的操作模式: {}", mode);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("无效的mode值，必须为'auto'或'manual'");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-            
-            // 执行操作模式设置
-            PLCManager::instance().execute_operation(mode);
-
-            // 返回成功响应
-            web::json::value response;
-            response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["mode"] = web::json::value::string(mode);
-            request.reply(status_codes::OK, response);
-        }
-        catch (const std::exception& e) {
-            SPDLOG_ERROR("操作模式设置请求处理失败: {}", e.what());
-            web::json::value error_response;
-            error_response["msg"] = web::json::value::string("error");
-            error_response["error"] = web::json::value::string(e.what());
-            request.reply(status_codes::BadRequest, error_response);
-        }
-            });
-}
-
-/**
  * @brief 设备状态获取
  * @param request HTTP请求对象
  * @details 获取当前设备状态信息，支持通过fields参数筛选返回字段
@@ -700,74 +492,4 @@ void StabilityServer::handle_error_report(http_request request) {
             request.reply(status_codes::BadRequest, error_response);
         }
             });
-}
-
-/**
- * @brief 请求认证处理
- * @param request HTTP请求对象
- * @return 认证是否通过
- * @details 检查IP白名单和基本认证
- */
-bool StabilityServer::authenticate_request(const http_request& request) {
-    auto& config = ConfigManager::instance();
-    
-    // 检查IP白名单
-    std::string client_ip = request.remote_address();
-    if (!config.is_ip_allowed(client_ip)) {
-        SPDLOG_WARN("IP地址 {} 不在白名单中", client_ip);
-        return false;
-    }
-    
-    // 检查基本认证
-    if (config.get_basic_auth_enabled()) {
-        auto auth_header = request.headers().find("Authorization");
-        if (auth_header == request.headers().end()) {
-            SPDLOG_WARN("请求缺少认证头");
-            return false;
-        }
-        
-        std::string auth = auth_header->second;
-        if (auth.substr(0, 6) != "Basic ") {
-            SPDLOG_WARN("认证头格式错误");
-            return false;
-        }
-        
-        // 解码Base64认证信息
-        std::string credentials = auth.substr(6);
-        std::vector<unsigned char> decoded_bytes = utility::conversions::from_base64(credentials);
-        std::string decoded(decoded_bytes.begin(), decoded_bytes.end());
-        
-        size_t colon_pos = decoded.find(':');
-        if (colon_pos == std::string::npos) {
-            SPDLOG_WARN("认证信息格式错误");
-            return false;
-        }
-        
-        std::string username = decoded.substr(0, colon_pos);
-        std::string password = decoded.substr(colon_pos + 1);
-        
-        if (username != config.get_username() || password != config.get_password()) {
-            SPDLOG_WARN("用户名或密码错误");
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-/**
- * @brief 统一请求处理入口
- * @param request HTTP请求对象
- * @details 处理所有请求的认证和路由
- */
-void StabilityServer::handle_request(const http_request& request) {
-    // 添加安全验证
-    if (!authenticate_request(request)) {
-        http_response response(status_codes::Unauthorized);
-        response.headers().add("WWW-Authenticate", "Basic realm=\"StabilityRetentionSystem\"");
-        request.reply(response);
-        return;
-    }
-    
-    // ... existing request handling code ...
 }

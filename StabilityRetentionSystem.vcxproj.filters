@@ -5,9 +5,6 @@
     <None Include="config\config.ini">
       <Filter>config</Filter>
     </None>
-    <None Include="config\logging.conf">
-      <Filter>config</Filter>
-    </None>
     <None Include="scripts\install_service.sh">
       <Filter>scripts</Filter>
     </None>

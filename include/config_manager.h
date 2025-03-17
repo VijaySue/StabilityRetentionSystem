@@ -98,7 +98,7 @@ private:
     int server_port = 8080;               // 默认端口
     
     // PLC配置
-    std::string plc_ip = "192.168.1.10";  // 默认PLC IP地址
+    std::string plc_ip = "192.168.27.57";  // 默认PLC IP地址
     int plc_port = 502;                   // 默认Modbus TCP端口
     
     // 日志配置

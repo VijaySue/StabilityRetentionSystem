@@ -100,7 +100,6 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="config\config.ini" />
-    <None Include="config\logging.conf" />
     <None Include="makefile" />
     <None Include="scripts\install_service.sh" />
     <None Include="scripts\uninstall_service.sh" />
