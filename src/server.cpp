@@ -60,7 +60,7 @@ void StabilityServer::init_routes() {
         const auto path = request.relative_uri().path();
         SPDLOG_DEBUG("[GET] 请求路径: {}", path);
 
-        if (path == "/stability/health") {
+        if (path == "/stability/system/status") {
             handle_health(request);
         }
         else if (path == "/stability/device/state") {
@@ -101,17 +101,16 @@ void StabilityServer::init_routes() {
 }
 
 /**
- * @brief 健康检查处理
+ * @brief 系统状态检测处理
  * @param request HTTP请求对象
- * @details 返回系统在线状态、版本号和时间戳
+ * @details 返回系统在线状态
  */
 void StabilityServer::handle_health(http_request request) {
-    SPDLOG_DEBUG("处理健康检查请求");
+    SPDLOG_DEBUG("处理系统状态检测请求");
     web::json::value response;
+    response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
+    response["code"] = web::json::value::number(200);
     response["status"] = web::json::value::string("online");
-    response["version"] = web::json::value::string(constants::VERSION);
-    response["timestamp"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count());
     request.reply(status_codes::OK, response);
 }
 
@@ -138,6 +137,7 @@ void StabilityServer::handle_support_control(http_request request) {
                 
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
+                error_response["code"] = web::json::value::number(400);
                 error_response["error"] = web::json::value::string("请求参数不完整，需要taskId, defectId和state字段");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
@@ -151,31 +151,32 @@ void StabilityServer::handle_support_control(http_request request) {
                          taskId, defectId, state);
 
             // 验证state参数的有效性
-            if (state != "rigid" && state != "flexible") {
+            if (state != "刚性支撑" && state != "柔性复位") {
                 SPDLOG_WARN("无效的支撑控制状态: {}", state);
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("无效的state值，必须为'rigid'或'flexible'");
+                error_response["code"] = web::json::value::number(400);
+                error_response["error"] = web::json::value::string("无效的state值，必须为'刚性支撑'或'柔性复位'");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
             
             // 创建异步任务
-            TaskManager::instance().create_task(taskId, defectId, state);
+            // JSON映射: state → operation
+            // JSON中没有platformNum，所以不提供target参数
+            TaskManager::instance().create_task(taskId, defectId, state);  // state作为operation参数
 
             // 返回成功响应
             web::json::value response;
             response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["taskId"] = web::json::value::number(taskId);
-            response["defectId"] = web::json::value::number(defectId);
-            response["state"] = web::json::value::string(state);
-            response["status"] = web::json::value::string("processing");
+            response["code"] = web::json::value::number(200);
             request.reply(status_codes::OK, response);
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("支撑控制请求处理失败: {}", e.what());
             web::json::value error_response;
             error_response["msg"] = web::json::value::string("error");
+            error_response["code"] = web::json::value::number(400);
             error_response["error"] = web::json::value::string(e.what());
             request.reply(status_codes::BadRequest, error_response);
         }
@@ -207,6 +208,7 @@ void StabilityServer::handle_platform_height_control(http_request request) {
                 
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
+                error_response["code"] = web::json::value::number(400);
                 error_response["error"] = web::json::value::string("请求参数不完整，需要taskId, defectId, platformNum和state字段");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
@@ -225,43 +227,43 @@ void StabilityServer::handle_platform_height_control(http_request request) {
                 SPDLOG_WARN("无效的平台编号: {}", platformNum);
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
+                error_response["code"] = web::json::value::number(400);
                 error_response["error"] = web::json::value::string("无效的platformNum值，必须为1或2");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
             
             // 验证state参数的有效性
-            if (state != "up" && state != "down") {
+            if (state != "升高" && state != "复位") {
                 SPDLOG_WARN("无效的平台控制状态: {}", state);
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("无效的state值，必须为'up'或'down'");
+                error_response["code"] = web::json::value::number(400);
+                error_response["error"] = web::json::value::string("无效的state值，必须为'升高'或'复位'");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
             
             // 创建异步任务
+            // JSON映射: state → operation, platformNum → target
             TaskManager::instance().create_task(
-                taskId,
-                defectId,
-                state,
-                std::to_string(platformNum)
+                taskId,                       // JSON中的taskId
+                defectId,                     // JSON中的defectId
+                state,                        // JSON中的state作为operation参数
+                std::to_string(platformNum)   // JSON中的platformNum作为target参数
             );
 
             // 返回成功响应
             web::json::value response;
             response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["taskId"] = web::json::value::number(taskId);
-            response["defectId"] = web::json::value::number(defectId);
-            response["platformNum"] = web::json::value::number(platformNum);
-            response["state"] = web::json::value::string(state);
-            response["status"] = web::json::value::string("processing");
+            response["code"] = web::json::value::number(200);
             request.reply(status_codes::OK, response);
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("平台高度控制请求处理失败: {}", e.what());
             web::json::value error_response;
             error_response["msg"] = web::json::value::string("error");
+            error_response["code"] = web::json::value::number(400);
             error_response["error"] = web::json::value::string(e.what());
             request.reply(status_codes::BadRequest, error_response);
         }
@@ -293,6 +295,7 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
                 
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
+                error_response["code"] = web::json::value::number(400);
                 error_response["error"] = web::json::value::string("请求参数不完整，需要taskId, defectId, platformNum和state字段");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
@@ -311,43 +314,43 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
                 SPDLOG_WARN("无效的平台编号: {}", platformNum);
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
+                error_response["code"] = web::json::value::number(400);
                 error_response["error"] = web::json::value::string("无效的platformNum值，必须为1或2");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
             
             // 验证state参数的有效性
-            if (state != "level" && state != "level_reset") {
+            if (state != "调平" && state != "调平复位") {
                 SPDLOG_WARN("无效的调平控制状态: {}", state);
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("无效的state值，必须为'level'或'level_reset'");
+                error_response["code"] = web::json::value::number(400);
+                error_response["error"] = web::json::value::string("无效的state值，必须为'调平'或'调平复位'");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
             
             // 创建异步任务
+            // JSON映射: state → operation, platformNum → target
             TaskManager::instance().create_task(
-                taskId,
-                defectId,
-                state,
-                std::to_string(platformNum)
+                taskId,                       // JSON中的taskId
+                defectId,                     // JSON中的defectId
+                state,                        // JSON中的state作为operation参数
+                std::to_string(platformNum)   // JSON中的platformNum作为target参数
             );
 
             // 返回成功响应
             web::json::value response;
             response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["taskId"] = web::json::value::number(taskId);
-            response["defectId"] = web::json::value::number(defectId);
-            response["platformNum"] = web::json::value::number(platformNum);
-            response["state"] = web::json::value::string(state);
-            response["status"] = web::json::value::string("processing");
+            response["code"] = web::json::value::number(200);
             request.reply(status_codes::OK, response);
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("平台调平控制请求处理失败: {}", e.what());
             web::json::value error_response;
             error_response["msg"] = web::json::value::string("error");
+            error_response["code"] = web::json::value::number(400);
             error_response["error"] = web::json::value::string(e.what());
             request.reply(status_codes::BadRequest, error_response);
         }
@@ -447,47 +450,59 @@ void StabilityServer::handle_error_report(http_request request) {
             SPDLOG_INFO("收到错误上报请求");
             
             // 参数校验
-            if (!body.has_field("alarm")) {
+            if (!body.has_field("alarm") || !body.has_field("timestamp")) {
                 SPDLOG_WARN("错误上报请求参数不完整");
                 
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
-                error_response["error"] = web::json::value::string("请求参数不完整，需要alarm字段");
+                error_response["code"] = web::json::value::number(400);
+                error_response["error"] = web::json::value::string("请求参数不完整，需要alarm和timestamp字段");
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
 
             const std::string alarm = utility::conversions::to_utf8string(body["alarm"].as_string());
-            SPDLOG_WARN("系统报警信息: {}", alarm);
+            const int64_t timestamp = body["timestamp"].as_number().to_int64();
             
-            // 可选的额外信息
-            std::string source = "unknown";
-            std::string level = "warning";
-            std::string timestamp = std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count());
+            SPDLOG_WARN("系统报警信息: {}, 时间戳: {}", alarm, timestamp);
             
-            if (body.has_field("source")) {
-                source = utility::conversions::to_utf8string(body["source"].as_string());
+            // 验证报警信息是否合法
+            const std::vector<std::string> valid_alarms = {
+                "油温低", "油温高", "液位低", "液位高", "滤芯堵"
+            };
+            
+            bool valid_alarm = false;
+            for (const auto& valid : valid_alarms) {
+                if (alarm == valid) {
+                    valid_alarm = true;
+                    break;
+                }
             }
             
-            if (body.has_field("level")) {
-                level = utility::conversions::to_utf8string(body["level"].as_string());
+            if (!valid_alarm) {
+                SPDLOG_WARN("无效的报警信息: {}", alarm);
+                web::json::value error_response;
+                error_response["msg"] = web::json::value::string("error");
+                error_response["code"] = web::json::value::number(400);
+                error_response["error"] = web::json::value::string("无效的alarm值，可选值为：油温低, 油温高, 液位低, 液位高, 滤芯堵");
+                request.reply(status_codes::BadRequest, error_response);
+                return;
             }
             
             // 记录完整的报警信息
-            SPDLOG_ERROR("系统报警: 来源={}, 级别={}, 信息={}", source, level, alarm);
+            SPDLOG_ERROR("系统报警: 信息={}, 时间={}", alarm, timestamp);
             
             // 返回成功响应
             web::json::value response;
             response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["alarm"] = web::json::value::string(alarm);
-            response["timestamp"] = web::json::value::string(timestamp);
+            response["code"] = web::json::value::number(200);
             request.reply(status_codes::OK, response);
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("错误上报请求处理失败: {}", e.what());
             web::json::value error_response;
             error_response["msg"] = web::json::value::string("error");
+            error_response["code"] = web::json::value::number(400);
             error_response["error"] = web::json::value::string(e.what());
             request.reply(status_codes::BadRequest, error_response);
         }

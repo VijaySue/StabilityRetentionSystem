@@ -79,42 +79,63 @@ void TaskManager::worker_thread() {
                 // 映射操作名称到PLC操作指令
                 std::string plc_command;
                 
-                // 根据API接口文档中定义的操作类型映射到PLC操作命令
-                if (task.operation == "rigid") {
+                // 映射关系: JSON.state → task.operation, JSON.platformNum → task.target
+                // 根据API请求的state(operation)和platformNum(target)映射到PLC操作命令
+                if (task.operation == "刚性支撑") {  // JSON请求中state="刚性支撑"
+                    // 对应M22.1
                     plc_command = "刚性支撑";
                 }
-                else if (task.operation == "flexible") {
+                else if (task.operation == "柔性复位") {  // JSON请求中state="柔性复位"
+                    // 对应M22.2
                     plc_command = "柔性复位";
                 }
-                else if (task.operation == "up") {
-                    plc_command = "平台" + task.target + "上升";
+                else if (task.operation == "升高") {  // JSON请求中state="升高"
+                    if (task.target == "1") {  // JSON请求中platformNum=1
+                        // 对应M22.3
+                        plc_command = "平台1上升";
+                    } else if (task.target == "2") {  // JSON请求中platformNum=2
+                        // 对应M22.5
+                        plc_command = "平台2上升";
+                    } else {
+                        // 默认为平台1
+                        plc_command = "平台1上升";
+                    }
                 }
-                else if (task.operation == "down") {
-                    plc_command = "平台" + task.target + "下降";
+                else if (task.operation == "复位") {  // JSON请求中state="复位"
+                    if (task.target == "1") {  // JSON请求中platformNum=1
+                        // 对应M22.4
+                        plc_command = "平台1复位";
+                    } else if (task.target == "2") {  // JSON请求中platformNum=2
+                        // 对应M22.6
+                        plc_command = "平台2复位";
+                    } else {
+                        // 默认为平台1
+                        plc_command = "平台1复位";
+                    }
                 }
-                else if (task.operation == "level") {
-                    plc_command = "调平启动";
+                else if (task.operation == "调平") {  // JSON请求中state="调平"
+                    if (task.target == "1") {  // JSON请求中platformNum=1
+                        // 对应M22.7
+                        plc_command = "平台1调平";
+                    } else if (task.target == "2") {  // JSON请求中platformNum=2
+                        // 对应M23.1
+                        plc_command = "平台2调平";
+                    } else {
+                        // 默认为平台1
+                        plc_command = "平台1调平";
+                    }
                 }
-                else if (task.operation == "level_reset") {
-                    plc_command = "调平停止";
-                }
-                else if (task.operation == "power_on") {
-                    plc_command = "电源开";
-                }
-                else if (task.operation == "power_off") {
-                    plc_command = "电源关";
-                }
-                else if (task.operation == "motor_start") {
-                    plc_command = "启动电机";
-                }
-                else if (task.operation == "motor_stop") {
-                    plc_command = "停止电机";
-                }
-                else if (task.operation == "auto") {
-                    plc_command = "自动模式";
-                }
-                else if (task.operation == "manual") {
-                    plc_command = "手动模式";
+                else if (task.operation == "调平复位") {  // JSON请求中state="调平复位"
+                    if (task.target == "1") {  // JSON请求中platformNum=1
+                        // 对应M23.0
+                        plc_command = "平台1调平复位";
+                    } else if (task.target == "2") {  // JSON请求中platformNum=2
+                        // 对应M23.2
+                        plc_command = "平台2调平复位";
+                    } else {
+                        // 默认为平台1
+                        plc_command = "平台1调平复位";
+                    }
                 }
                 else {
                     // 未知操作类型，直接传递给PLC
@@ -123,55 +144,84 @@ void TaskManager::worker_thread() {
                 }
                 
                 // 执行PLC设备操作
-                PLCManager::instance().execute_operation(plc_command);
-                SPDLOG_INFO("任务执行成功，ID: {}，操作: {}", task.taskId, plc_command);
-
-                // 构造回调状态文本
-                std::string state = "success";
+                bool operation_success = PLCManager::instance().execute_operation(plc_command);
                 
-                // 根据操作类型选择不同的回调方法
-                if (task.operation == "rigid" || task.operation == "flexible") {
-                    // 支撑控制回调
-                    CallbackClient::instance().send_support_callback(
-                        task.taskId,
-                        task.defectId,
-                        state
-                    );
-                }
-                else if (task.operation == "up" || task.operation == "down") {
-                    // 平台高度回调
-                    int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
-                    CallbackClient::instance().send_platform_height_callback(
-                        task.taskId,
-                        task.defectId,
-                        platformNum,
-                        state
-                    );
-                }
-                else if (task.operation == "level" || task.operation == "level_reset") {
-                    // 平台调平回调
-                    int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
-                    CallbackClient::instance().send_platform_horizontal_callback(
-                        task.taskId,
-                        task.defectId,
-                        platformNum,
-                        state
-                    );
-                }
-                else if (task.operation == "power_on" || task.operation == "power_off") {
-                    // 电源控制没有回调，记录日志
-                    SPDLOG_INFO("电源控制操作完成: {}", task.operation);
-                }
-                else if (task.operation == "motor_start" || task.operation == "motor_stop") {
-                    // 电机控制没有回调，记录日志
-                    SPDLOG_INFO("电机控制操作完成: {}", task.operation);
-                }
-                else if (task.operation == "auto" || task.operation == "manual") {
-                    // 操作模式控制没有回调，记录日志
-                    SPDLOG_INFO("操作模式设置完成: {}", task.operation);
-                }
-                else {
-                    SPDLOG_WARN("未知操作类型: {}, 无法发送回调", task.operation);
+                if (operation_success) {
+                    SPDLOG_INFO("任务执行成功，ID: {}，操作: {}", task.taskId, plc_command);
+                    
+                    // 构造回调状态文本
+                    std::string state = "success";
+                    
+                    // 根据操作类型选择不同的回调方法
+                    if (task.operation == "刚性支撑" || task.operation == "柔性复位") {
+                        // 支撑控制回调
+                        std::string callbackState = (task.operation == "刚性支撑") ? "已刚性支撑" : "已柔性复位";
+                        CallbackClient::instance().send_support_callback(
+                            task.taskId,
+                            task.defectId,
+                            callbackState
+                        );
+                    }
+                    else if (task.operation == "升高" || task.operation == "复位") {
+                        // 平台高度回调
+                        std::string callbackState = (task.operation == "升高") ? "已升高" : "已复位";
+                        int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
+                        CallbackClient::instance().send_platform_height_callback(
+                            task.taskId,
+                            task.defectId,
+                            platformNum,
+                            callbackState
+                        );
+                    }
+                    else if (task.operation == "调平" || task.operation == "调平复位") {
+                        // 平台调平回调
+                        std::string callbackState = (task.operation == "调平") ? "已调平" : "已调平复位";
+                        int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
+                        CallbackClient::instance().send_platform_horizontal_callback(
+                            task.taskId,
+                            task.defectId,
+                            platformNum,
+                            callbackState
+                        );
+                    }
+                    else {
+                        SPDLOG_WARN("未知操作类型: {}, 无法发送回调", task.operation);
+                    }
+                } else {
+                    // PLC操作失败，发送失败回调
+                    SPDLOG_ERROR("任务执行失败，ID: {}，操作: {}", task.taskId, plc_command);
+                    
+                    std::string error_message = "PLC操作失败: " + plc_command;
+                    
+                    // 根据操作类型选择不同的回调方法
+                    if (task.operation == "刚性支撑" || task.operation == "柔性复位") {
+                        CallbackClient::instance().send_support_callback(
+                            task.taskId,
+                            task.defectId,
+                            "error: " + error_message
+                        );
+                    }
+                    else if (task.operation == "升高" || task.operation == "复位") {
+                        int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
+                        CallbackClient::instance().send_platform_height_callback(
+                            task.taskId,
+                            task.defectId,
+                            platformNum,
+                            "error: " + error_message
+                        );
+                    }
+                    else if (task.operation == "调平" || task.operation == "调平复位") {
+                        int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
+                        CallbackClient::instance().send_platform_horizontal_callback(
+                            task.taskId,
+                            task.defectId,
+                            platformNum,
+                            "error: " + error_message
+                        );
+                    }
+                    else {
+                        SPDLOG_WARN("未知操作类型: {}, 无法发送失败回调", task.operation);
+                    }
                 }
             }
             catch (const std::exception& e) {
@@ -183,16 +233,16 @@ void TaskManager::worker_thread() {
                     std::string error_state = "error: " + std::string(e.what());
                     
                     // 尝试发送错误回调
-                    if (task.operation == "rigid" || task.operation == "flexible") {
+                    if (task.operation == "刚性支撑" || task.operation == "柔性复位") {
                         CallbackClient::instance().send_support_callback(
                             task.taskId, task.defectId, error_state);
                     }
-                    else if (task.operation == "up" || task.operation == "down") {
+                    else if (task.operation == "升高" || task.operation == "复位") {
                         int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
                         CallbackClient::instance().send_platform_height_callback(
                             task.taskId, task.defectId, platformNum, error_state);
                     }
-                    else if (task.operation == "level" || task.operation == "level_reset") {
+                    else if (task.operation == "调平" || task.operation == "调平复位") {
                         int platformNum = !task.target.empty() ? std::stoi(task.target) : 1;
                         CallbackClient::instance().send_platform_horizontal_callback(
                             task.taskId, task.defectId, platformNum, error_state);

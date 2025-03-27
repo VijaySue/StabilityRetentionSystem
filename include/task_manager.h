@@ -13,14 +13,19 @@
 #include <condition_variable>
 
 /**
- * @brief 异步任务管理器（单例）
- * @note 处理文档中所有异步操作（带回调的接口）
+ * @brief 异步任务结构体
+ * @details 存储API请求中的任务信息，用于异步处理
+ * @note JSON请求参数映射关系:
+ *       - taskId → AsyncTask.taskId (任务ID)
+ *       - defectId → AsyncTask.defectId (缺陷ID)
+ *       - state → AsyncTask.operation (操作类型，如"升高"、"复位")
+ *       - platformNum → AsyncTask.target (平台编号，转为字符串)
  */
 struct AsyncTask {
-    int taskId;             // 文档中的taskId
-    int defectId;           // 文档中的defectId
-    std::string operation;  // 操作类型（"刚性支撑"/"平台升高等"）
-    std::string target;     // 操作目标（如平台编号）
+    int taskId;             // 对应JSON请求中的taskId
+    int defectId;           // 对应JSON请求中的defectId
+    std::string operation;  // 对应JSON请求中的state (操作类型)
+    std::string target;     // 对应JSON请求中的platformNum (操作目标)
 };
 
 class TaskManager {
@@ -29,12 +34,18 @@ public:
 
     /**
      * @brief 创建异步任务
-     * @param taskId 任务标识（用于回调匹配）
-     * @param operation 操作指令（需符合文档定义）
+     * @details 将API请求参数转换为异步任务并加入队列
+     * @param taskId 任务标识（对应JSON中的taskId）
+     * @param defectId 缺陷ID（对应JSON中的defectId）
+     * @param operation 操作指令（对应JSON中的state，如"升高"、"复位"）
+     * @param target 操作目标（对应JSON中的platformNum，如"1"、"2"）
+     * @note JSON请求映射关系:
+     *       - {"state": "升高", "platformNum": 1} →
+     *         create_task(..., "升高", "1")
      */
     void create_task(int taskId, int defectId,
-        const std::string& operation,
-        const std::string& target = "");
+        const std::string& operation,  // 对应JSON中的state
+        const std::string& target = ""); // 对应JSON中的platformNum
 
 private:
     TaskManager();

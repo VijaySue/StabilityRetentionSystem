@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <unistd.h>
 #include <linux/limits.h>
+#include <iostream>
 
 /**
  * @brief 获取ConfigManager单例实例
@@ -45,34 +46,48 @@ std::filesystem::path get_executable_path() {
  * @return 加载是否成功
  */
 bool ConfigManager::load_config(const std::string& config_file) {
-    // 获取可执行文件所在目录
+    // 直接从项目根目录加载配置文件
     std::filesystem::path exe_dir = get_executable_path();
-    std::filesystem::path config_path = exe_dir / config_file;
+    std::filesystem::path config_path = exe_dir.parent_path() / "config" / "config.ini";
     
-    // 如果文件不存在，尝试在上级目录的config文件夹中查找
-    if (!std::filesystem::exists(config_path)) {
-        config_path = exe_dir.parent_path() / "config" / "config.ini";
-    }
+    std::cout << "尝试加载配置文件: " << config_path.string() << std::endl;
     
     std::ifstream file(config_path);
     if (!file.is_open()) {
-        SPDLOG_ERROR("无法打开配置文件: {}", config_path.string());
+        std::cerr << "无法打开配置文件: " << config_path.string() << std::endl;
         return false;
     }
 
+    std::cout << "成功打开配置文件: " << config_path.string() << std::endl;
+    
     std::string line;
-    std::string current_section;
+    std::string current_section = "";
+    int line_number = 0;
     
     while (std::getline(file, line)) {
-        // 跳过空行和注释
+        line_number++;
+        
+        // 去除首尾空格
+        size_t start = line.find_first_not_of(" \t");
+        if (start == std::string::npos) {
+            // 空行
+            continue;
+        }
+        line = line.substr(start);
+        
+        // 跳过注释
         if (line.empty() || line[0] == '#') {
             continue;
         }
         
         // 处理节
-        if (line[0] == '[' && line[line.length() - 1] == ']') {
-            current_section = line.substr(1, line.length() - 2);
-            continue;
+        if (line[0] == '[') {
+            size_t end = line.find(']');
+            if (end != std::string::npos) {
+                current_section = line.substr(1, end - 1);
+                std::cout << "行 " << line_number << ": 找到配置节 [" << current_section << "]" << std::endl;
+                continue;
+            }
         }
         
         // 处理键值对
@@ -85,48 +100,113 @@ bool ConfigManager::load_config(const std::string& config_file) {
             key.erase(0, key.find_first_not_of(" \t"));
             key.erase(key.find_last_not_of(" \t") + 1);
             value.erase(0, value.find_first_not_of(" \t"));
+            
+            // 去除值中的注释
+            size_t comment_pos = value.find('#');
+            if (comment_pos != std::string::npos) {
+                value = value.substr(0, comment_pos);
+            }
+            
+            // 再次去除尾部空格（在去除注释后）
             value.erase(value.find_last_not_of(" \t") + 1);
             
+            std::cout << "行 " << line_number << ": 读取配置项: [" << current_section << "] " 
+                      << key << " = " << value << std::endl;
+            
             // 根据节和键设置相应的值
-            if (current_section == "server") {
-                if (key == "host") server_host = value;
-                else if (key == "port") server_port = std::stoi(value);
-            }
-            else if (current_section == "plc") {
-                if (key == "ip") plc_ip = value;
-                else if (key == "port") plc_port = std::stoi(value);
-            }
-            else if (current_section == "logging") {
-                if (key == "level") log_level = value;
-            }
-            else if (current_section == "security") {
-                if (key == "basic_auth") basic_auth_enabled_ = (value == "true" || value == "1");
-                else if (key == "username") username_ = value;
-                else if (key == "password") password_ = value;
-                else if (key == "ip_whitelist") ip_whitelist_enabled_ = (value == "true" || value == "1");
-                else if (key == "allowed_ips") {
-                    // 解析IP白名单
-                    std::istringstream iss(value);
-                    std::string ip;
-                    allowed_ips_.clear();
-                    while (std::getline(iss, ip, ',')) {
-                        // 去除空格
-                        ip.erase(0, ip.find_first_not_of(" "));
-                        ip.erase(ip.find_last_not_of(" ") + 1);
-                        if (!ip.empty()) {
-                            allowed_ips_.push_back(ip);
+            try {
+                if (current_section == "server") {
+                    if (key == "host") {
+                        server_host = value;
+                        std::cout << "  设置server.host = " << server_host << std::endl;
+                    }
+                    else if (key == "port") {
+                        server_port = std::stoi(value);
+                        std::cout << "  设置server.port = " << server_port << std::endl;
+                    }
+                }
+                else if (current_section == "plc") {
+                    if (key == "ip") {
+                        plc_ip = value;
+                        std::cout << "  设置plc.ip = " << plc_ip << std::endl;
+                    }
+                    else if (key == "port") {
+                        plc_port = std::stoi(value);
+                        std::cout << "  设置plc.port = " << plc_port << std::endl;
+                    }
+                }
+                else if (current_section == "logging") {
+                    if (key == "level") {
+                        log_level = value;
+                        std::cout << "  设置logging.level = " << log_level << std::endl;
+                    }
+                }
+                else if (current_section == "edge_system") {
+                    if (key == "address") {
+                        edge_system_address = value;
+                        std::cout << "  设置edge_system.address = " << edge_system_address << std::endl;
+                    }
+                    else if (key == "port") {
+                        edge_system_port = std::stoi(value);
+                        std::cout << "  设置edge_system.port = " << edge_system_port << std::endl;
+                    }
+                }
+                else if (current_section == "security") {
+                    if (key == "basic_auth") basic_auth_enabled_ = (value == "true" || value == "1");
+                    else if (key == "username") username_ = value;
+                    else if (key == "password") password_ = value;
+                    else if (key == "ip_whitelist") ip_whitelist_enabled_ = (value == "true" || value == "1");
+                    else if (key == "allowed_ips") {
+                        // 解析IP白名单
+                        std::istringstream iss(value);
+                        std::string ip;
+                        allowed_ips_.clear();
+                        while (std::getline(iss, ip, ',')) {
+                            // 去除空格
+                            ip.erase(0, ip.find_first_not_of(" "));
+                            ip.erase(ip.find_last_not_of(" ") + 1);
+                            if (!ip.empty()) {
+                                allowed_ips_.push_back(ip);
+                            }
                         }
                     }
                 }
+                else {
+                    std::cout << "警告: 在未知节 [" << current_section << "] 中的配置项将被忽略" << std::endl;
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "解析配置项时出错，行 " << line_number << ": " << e.what() << std::endl;
             }
         }
     }
     
     // 如果没有找到security节，使用默认安全配置
-    if (current_section != "security") {
+    bool found_security = false;
+    for (int i = 0; i < line_number; i++) {
+        file.clear();  // 清除文件流状态
+        file.seekg(0); // 回到文件开头
+        std::string search_line;
+        while (std::getline(file, search_line)) {
+            if (search_line.find("[security]") != std::string::npos) {
+                found_security = true;
+                break;
+            }
+        }
+    }
+    
+    if (!found_security) {
         basic_auth_enabled_ = false;
         ip_whitelist_enabled_ = false;
     }
+    
+    std::cout << "\n配置加载完成，最终配置值:" << std::endl;
+    std::cout << "  server.host = " << server_host << std::endl;
+    std::cout << "  server.port = " << server_port << std::endl;
+    std::cout << "  plc.ip = " << plc_ip << std::endl;
+    std::cout << "  plc.port = " << plc_port << std::endl;
+    std::cout << "  logging.level = " << log_level << std::endl;
+    std::cout << "  edge_system.address = " << edge_system_address << std::endl;
+    std::cout << "  edge_system.port = " << edge_system_port << std::endl;
     
     SPDLOG_INFO("成功加载配置文件: {}", config_path.string());
     return true;

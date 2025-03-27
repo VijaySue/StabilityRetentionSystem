@@ -46,5 +46,11 @@ public:
 private:
     CallbackClient();  // 私有构造函数确保单例
     web::http::client::http_client m_client;  // HTTP客户端
-    static const utility::string_t EDGE_CALLBACK_BASE_URL;  // 边缘系统基础地址
+    
+    /**
+     * @brief 获取边缘系统回调基础URL
+     * @details 从ConfigManager获取边缘系统地址和端口，并构建完整URL
+     * @return 边缘系统基础URL
+     */
+    static const utility::string_t get_edge_callback_base_url();
 };

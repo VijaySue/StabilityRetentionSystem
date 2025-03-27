@@ -8,9 +8,19 @@
 
 // callback_client.cpp
 #include "../include/callback_client.h"
+#include "../include/config_manager.h"
 #include <spdlog/spdlog.h>
 
-const utility::string_t CallbackClient::EDGE_CALLBACK_BASE_URL = U("http://192.168.27.57:8080");
+// 通过函数获取基础URL
+const utility::string_t CallbackClient::get_edge_callback_base_url() {
+    ConfigManager& config = ConfigManager::instance();
+    std::string url = config.get_edge_system_address();
+    int port = config.get_edge_system_port();
+    
+    // 构建完整URL
+    std::string fullUrl = url + ":" + std::to_string(port);
+    return utility::conversions::to_string_t(fullUrl);
+}
 
 CallbackClient& CallbackClient::instance() {
     static CallbackClient instance;
@@ -18,8 +28,8 @@ CallbackClient& CallbackClient::instance() {
 }
 
 CallbackClient::CallbackClient()
-    : m_client(EDGE_CALLBACK_BASE_URL) {  // 初始化边缘系统地址
-    SPDLOG_DEBUG("初始化回调客户端，目标地址: {}", EDGE_CALLBACK_BASE_URL);
+    : m_client(get_edge_callback_base_url()) {  // 使用从配置读取的地址
+    SPDLOG_DEBUG("初始化回调客户端，目标地址: {}", U(get_edge_callback_base_url()));
 }
 
 void CallbackClient::send_support_callback(int taskId, int defectId, const std::string& state) {

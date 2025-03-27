@@ -55,14 +55,6 @@ public:
     DeviceState get_current_state();
     
     /**
-     * @brief 向PLC写入数据
-     * @details 解析命令并写入对应的PLC地址
-     * @param cmd 写入命令
-     * @return 写入是否成功
-     */
-    bool write_plc_data(const std::string& cmd);
-    
-    /**
      * @brief 从PLC读取数据
      * @details 读取所有PLC地址的原始数据
      * @return 读取是否成功
@@ -80,8 +72,9 @@ public:
      * @details 将业务层面的操作转换为PLC层面的命令并执行
      *          支持刚性支撑、柔性复位、升降平台控制等操作
      * @param operation 操作指令，如"刚性支撑"、"柔性复位"等
+     * @return 操作是否成功执行
      */
-    void execute_operation(const std::string& operation);
+    bool execute_operation(const std::string& operation);
 
     // PLC设备配置常量
     static std::string get_plc_ip();  // PLC的IP地址

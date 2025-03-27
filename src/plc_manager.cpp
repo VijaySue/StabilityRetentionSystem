@@ -166,148 +166,103 @@ bool PLCManager::read_plc_data() {
         return false;
     }
     
-    // 读取VB类型数据（使用modbus_read_bits函数）
-    
-    // 读取VB1000: 操作模式
-    uint8_t bit_values[8];
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_OPERATION_MODE, 8, bit_values) == -1) {
-        SPDLOG_ERROR("读取操作模式失败: {}", modbus_strerror(errno));
+    // 读取VB1000控制字节（包含多个位状态）
+    uint8_t byte_value;
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VB_CONTROL_BYTE, 1, reinterpret_cast<uint16_t*>(&byte_value)) == -1) {
+        SPDLOG_ERROR("读取控制字节失败: {}", modbus_strerror(errno));
         return false;
     }
-    m_current_state.setVB(plc_address::VB_OPERATION_MODE, bit_values[0]);
+    m_current_state.setVB(plc_address::VB_CONTROL_BYTE, byte_value);
     
-    // 读取VB1001: 急停按钮
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_EMERGENCY_STOP, 8, bit_values) == -1) {
-        SPDLOG_ERROR("读取急停按钮状态失败: {}", modbus_strerror(errno));
-        return false;
-    }
-    m_current_state.setVB(plc_address::VB_EMERGENCY_STOP, bit_values[0]);
-    
-    // 读取VB1002: 油泵状态
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_OIL_PUMP, 8, bit_values) == -1) {
-        SPDLOG_ERROR("读取油泵状态失败: {}", modbus_strerror(errno));
-        return false;
-    }
-    m_current_state.setVB(plc_address::VB_OIL_PUMP, bit_values[0]);
-    
-    // 读取VB1003: 刚柔缸状态
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_CYLINDER_STATE, 8, bit_values) == -1) {
+    // 读取VB1001: 刚柔缸状态
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VB_CYLINDER_STATE, 1, reinterpret_cast<uint16_t*>(&byte_value)) == -1) {
         SPDLOG_ERROR("读取刚柔缸状态失败: {}", modbus_strerror(errno));
         return false;
     }
+    m_current_state.setVB(plc_address::VB_CYLINDER_STATE, byte_value);
     
-    // 根据位状态确定刚柔缸状态
-    uint8_t cylinder_state = 0;
-    for (int i = 0; i < 8; i++) {
-        if (bit_values[i]) {
-            cylinder_state |= (1 << i);
-        }
-    }
-    m_current_state.setVB(plc_address::VB_CYLINDER_STATE, cylinder_state);
-    
-    // 读取VB1004: 升降平台1状态
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_LIFT_PLATFORM1, 8, bit_values) == -1) {
+    // 读取VB1002: 升降平台1状态
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VB_LIFT_PLATFORM1, 1, reinterpret_cast<uint16_t*>(&byte_value)) == -1) {
         SPDLOG_ERROR("读取升降平台1状态失败: {}", modbus_strerror(errno));
         return false;
     }
+    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM1, byte_value);
     
-    // 根据位状态确定升降平台1状态
-    uint8_t platform1_state = 0;
-    for (int i = 0; i < 8; i++) {
-        if (bit_values[i]) {
-            platform1_state |= (1 << i);
-        }
-    }
-    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM1, platform1_state);
-    
-    // 读取VB1005: 升降平台2状态
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_LIFT_PLATFORM2, 8, bit_values) == -1) {
+    // 读取VB1003: 升降平台2状态
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VB_LIFT_PLATFORM2, 1, reinterpret_cast<uint16_t*>(&byte_value)) == -1) {
         SPDLOG_ERROR("读取升降平台2状态失败: {}", modbus_strerror(errno));
         return false;
     }
+    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM2, byte_value);
     
-    // 根据位状态确定升降平台2状态
-    uint8_t platform2_state = 0;
-    for (int i = 0; i < 8; i++) {
-        if (bit_values[i]) {
-            platform2_state |= (1 << i);
-        }
-    }
-    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM2, platform2_state);
-    
-    // 读取VB1006: 电加热状态
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_HEATER, 8, bit_values) == -1) {
-        SPDLOG_ERROR("读取电加热状态失败: {}", modbus_strerror(errno));
-        return false;
-    }
-    m_current_state.setVB(plc_address::VB_HEATER, bit_values[0]);
-    
-    // 读取VB1007: 风冷状态
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_AIR_COOLING, 8, bit_values) == -1) {
-        SPDLOG_ERROR("读取风冷状态失败: {}", modbus_strerror(errno));
-        return false;
-    }
-    m_current_state.setVB(plc_address::VB_AIR_COOLING, bit_values[0]);
-    
-    // 读取VB1008: 报警信号
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_ALARM, 8, bit_values) == -1) {
+    // 读取VB1004: 报警信号
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VB_ALARM, 1, reinterpret_cast<uint16_t*>(&byte_value)) == -1) {
         SPDLOG_ERROR("读取报警信号失败: {}", modbus_strerror(errno));
         return false;
     }
+    m_current_state.setVB(plc_address::VB_ALARM, byte_value);
     
-    // 报警信号使用5个位来表示
-    uint8_t alarm_state = 0;
-    for (int i = 0; i < 5; i++) {
-        if (bit_values[i]) {
-            alarm_state |= (1 << i);
-        }
-    }
-    m_current_state.setVB(plc_address::VB_ALARM, alarm_state);
+    // 读取VD类型浮点数据（使用modbus_read_registers函数，需要转换）
     
-    // 读取VB1009: 电动缸调平
-    if (modbus_read_bits(m_modbus_ctx, plc_address::VB_LEVELING, 8, bit_values) == -1) {
-        SPDLOG_ERROR("读取电动缸调平状态失败: {}", modbus_strerror(errno));
-        return false;
-    }
-    m_current_state.setVB(plc_address::VB_LEVELING, bit_values[0]);
-    
-    // 读取VW类型数据（使用modbus_read_registers函数）
-    
-    // 读取VW100: 刚柔缸下降停止压力值
-    uint16_t register_values[1];
-    if (modbus_read_registers(m_modbus_ctx, plc_address::VW_CYLINDER_PRESSURE, 1, register_values) == -1) {
+    // 读取VD1010: 刚柔缸下降停止压力值
+    uint16_t register_values[2]; // 浮点数需要读取2个寄存器
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VD_CYLINDER_PRESSURE, 2, register_values) == -1) {
         SPDLOG_ERROR("读取刚柔缸下降停止压力值失败: {}", modbus_strerror(errno));
         return false;
     }
-    m_current_state.setVW(plc_address::VW_CYLINDER_PRESSURE, static_cast<int16_t>(register_values[0]));
+    float value;
+    // 从2个16位寄存器转换为32位浮点
+    uint32_t combined = (register_values[0] << 16) | register_values[1];
+    memcpy(&value, &combined, sizeof(float));
+    m_current_state.setVD(plc_address::VD_CYLINDER_PRESSURE, value);
     
-    // 读取VW104: 升降平台1上升停止压力值
-    if (modbus_read_registers(m_modbus_ctx, plc_address::VW_PLATFORM1_PRESSURE, 1, register_values) == -1) {
-        SPDLOG_ERROR("读取升降平台1上升停止压力值失败: {}", modbus_strerror(errno));
+    // 读取VD1014: 升降平台上升停止压力值
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VD_LIFT_PRESSURE, 2, register_values) == -1) {
+        SPDLOG_ERROR("读取升降平台上升停止压力值失败: {}", modbus_strerror(errno));
         return false;
     }
-    m_current_state.setVW(plc_address::VW_PLATFORM1_PRESSURE, static_cast<int16_t>(register_values[0]));
+    combined = (register_values[0] << 16) | register_values[1];
+    memcpy(&value, &combined, sizeof(float));
+    m_current_state.setVD(plc_address::VD_LIFT_PRESSURE, value);
     
-    // 读取VW108: 升降平台2上升停止压力值
-    if (modbus_read_registers(m_modbus_ctx, plc_address::VW_PLATFORM2_PRESSURE, 1, register_values) == -1) {
-        SPDLOG_ERROR("读取升降平台2上升停止压力值失败: {}", modbus_strerror(errno));
+    // 读取VD1018: 平台1倾斜角度
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VD_PLATFORM1_TILT, 2, register_values) == -1) {
+        SPDLOG_ERROR("读取平台1倾斜角度失败: {}", modbus_strerror(errno));
         return false;
     }
-    m_current_state.setVW(plc_address::VW_PLATFORM2_PRESSURE, static_cast<int16_t>(register_values[0]));
+    combined = (register_values[0] << 16) | register_values[1];
+    memcpy(&value, &combined, sizeof(float));
+    m_current_state.setVD(plc_address::VD_PLATFORM1_TILT, value);
     
-    // 读取VW112: 平台倾斜角度
-    if (modbus_read_registers(m_modbus_ctx, plc_address::VW_TILT_ANGLE, 1, register_values) == -1) {
-        SPDLOG_ERROR("读取平台倾斜角度失败: {}", modbus_strerror(errno));
+    // 读取VD1022: 平台2倾斜角度
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VD_PLATFORM2_TILT, 2, register_values) == -1) {
+        SPDLOG_ERROR("读取平台2倾斜角度失败: {}", modbus_strerror(errno));
         return false;
     }
-    m_current_state.setVW(plc_address::VW_TILT_ANGLE, static_cast<int16_t>(register_values[0]));
+    combined = (register_values[0] << 16) | register_values[1];
+    memcpy(&value, &combined, sizeof(float));
+    m_current_state.setVD(plc_address::VD_PLATFORM2_TILT, value);
     
-    // 读取VW116: 平台位置信息
-    if (modbus_read_registers(m_modbus_ctx, plc_address::VW_POSITION, 1, register_values) == -1) {
-        SPDLOG_ERROR("读取平台位置信息失败: {}", modbus_strerror(errno));
+    // 读取VD1026: 平台1位置信息
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VD_PLATFORM1_POS, 2, register_values) == -1) {
+        SPDLOG_ERROR("读取平台1位置信息失败: {}", modbus_strerror(errno));
         return false;
     }
-    m_current_state.setVW(plc_address::VW_POSITION, static_cast<int16_t>(register_values[0]));
+    combined = (register_values[0] << 16) | register_values[1];
+    memcpy(&value, &combined, sizeof(float));
+    m_current_state.setVD(plc_address::VD_PLATFORM1_POS, value);
+    
+    // 读取VD1030: 平台2位置信息
+    if (modbus_read_registers(m_modbus_ctx, plc_address::VD_PLATFORM2_POS, 2, register_values) == -1) {
+        SPDLOG_ERROR("读取平台2位置信息失败: {}", modbus_strerror(errno));
+        return false;
+    }
+    combined = (register_values[0] << 16) | register_values[1];
+    memcpy(&value, &combined, sizeof(float));
+    m_current_state.setVD(plc_address::VD_PLATFORM2_POS, value);
+    
+    // 解析所有原始数据
+    parse_raw_values();
     
     return true;
 }
@@ -317,29 +272,46 @@ bool PLCManager::read_plc_data() {
  * @details 将读取的原始VB/VW数据解析为人类可读的状态文本和数值
  */
 void PLCManager::parse_raw_values() {
-    // 解析VB1000: 操作模式
-    uint8_t mode = m_current_state.getVB(plc_address::VB_OPERATION_MODE);
-    m_current_state.operationMode = (mode == 1) ? "手动" : (mode == 2) ? "自动" : "未知";
+    // 解析VB1000控制字节中的位
+    // 解析操作模式 - 位0
+    bool mode_bit = m_current_state.isBitSet(plc_address::VB_CONTROL_BYTE, plc_address::BIT_OPERATION_MODE);
+    m_current_state.operationMode = mode_bit ? "自动" : "手动";
     
-    // 解析VB1001: 急停按钮
-    uint8_t emergency = m_current_state.getVB(plc_address::VB_EMERGENCY_STOP);
-    m_current_state.emergencyStop = (emergency == 1) ? "复位" : (emergency == 2) ? "急停" : "未知";
+    // 解析急停状态 - 位1
+    bool emergency_bit = m_current_state.isBitSet(plc_address::VB_CONTROL_BYTE, plc_address::BIT_EMERGENCY_STOP);
+    m_current_state.emergencyStop = emergency_bit ? "正常" : "急停";
     
-    // 解析VB1002: 油泵状态
-    uint8_t pump = m_current_state.getVB(plc_address::VB_OIL_PUMP);
-    m_current_state.oilPumpStatus = (pump == 1) ? "停止" : (pump == 2) ? "启动" : "未知";
+    // 解析油泵状态 - 位2
+    bool pump_bit = m_current_state.isBitSet(plc_address::VB_CONTROL_BYTE, plc_address::BIT_OIL_PUMP);
+    m_current_state.oilPumpStatus = pump_bit ? "启动" : "停止";
     
-    // 解析VB1003: 刚柔缸状态
+    // 解析电加热状态 - 位3
+    bool heater_bit = m_current_state.isBitSet(plc_address::VB_CONTROL_BYTE, plc_address::BIT_HEATER);
+    m_current_state.heaterStatus = heater_bit ? "加热" : "停止";
+    
+    // 解析风冷状态 - 位4
+    bool cooling_bit = m_current_state.isBitSet(plc_address::VB_CONTROL_BYTE, plc_address::BIT_AIR_COOLING);
+    m_current_state.coolingStatus = cooling_bit ? "启动" : "停止";
+    
+    // 解析1#电动缸调平 - 位5
+    bool leveling1_bit = m_current_state.isBitSet(plc_address::VB_CONTROL_BYTE, plc_address::BIT_LEVELING1);
+    m_current_state.leveling1Status = leveling1_bit ? "启动" : "停止";
+    
+    // 解析2#电动缸调平 - 位6
+    bool leveling2_bit = m_current_state.isBitSet(plc_address::VB_CONTROL_BYTE, plc_address::BIT_LEVELING2);
+    m_current_state.leveling2Status = leveling2_bit ? "启动" : "停止";
+    
+    // 解析VB1001: 刚柔缸状态
     uint8_t cylinder = m_current_state.getVB(plc_address::VB_CYLINDER_STATE);
     switch (cylinder) {
         case 1: m_current_state.cylinderState = "下降停止"; break;
         case 2: m_current_state.cylinderState = "下降加压"; break;
         case 4: m_current_state.cylinderState = "上升停止"; break;
-        case 8: m_current_state.cylinderState = "上升停止"; break;
+        case 8: m_current_state.cylinderState = "上升加压"; break;
         default: m_current_state.cylinderState = "未知状态";
     }
     
-    // 解析VB1004: 升降平台1状态
+    // 解析VB1002: 升降平台1状态
     uint8_t platform1 = m_current_state.getVB(plc_address::VB_LIFT_PLATFORM1);
     switch (platform1) {
         case 1: m_current_state.platform1State = "上升"; break;
@@ -349,7 +321,7 @@ void PLCManager::parse_raw_values() {
         default: m_current_state.platform1State = "未知状态";
     }
     
-    // 解析VB1005: 升降平台2状态
+    // 解析VB1003: 升降平台2状态
     uint8_t platform2 = m_current_state.getVB(plc_address::VB_LIFT_PLATFORM2);
     switch (platform2) {
         case 1: m_current_state.platform2State = "上升"; break;
@@ -359,263 +331,119 @@ void PLCManager::parse_raw_values() {
         default: m_current_state.platform2State = "未知状态";
     }
     
-    // 解析VB1006: 电加热状态
-    uint8_t heater = m_current_state.getVB(plc_address::VB_HEATER);
-    m_current_state.heaterStatus = (heater == 1) ? "停止" : (heater == 2) ? "启动" : "未知";
-    
-    // 解析VB1007: 风冷状态
-    uint8_t cooling = m_current_state.getVB(plc_address::VB_AIR_COOLING);
-    m_current_state.coolingStatus = (cooling == 1) ? "停止" : (cooling == 2) ? "启动" : "未知";
-    
-    // 解析VB1008: 报警信号
+    // 解析VB1004: 报警信号
     uint8_t alarm = m_current_state.getVB(plc_address::VB_ALARM);
-    std::string alarm_details;
-    if (alarm & 0x01) alarm_details += "油温高 ";
-    if (alarm & 0x02) alarm_details += "液位低 ";
-    if (alarm & 0x04) alarm_details += "液位高 ";
-    if (alarm & 0x08) alarm_details += "滤芯堵 ";
     
-    m_current_state.alarmStatus = alarm_details.empty() ? "油温低" : alarm_details;
-    
-    // 解析VB1009: 电动缸调平
-    uint8_t leveling = m_current_state.getVB(plc_address::VB_LEVELING);
-    m_current_state.levelingStatus = (leveling == 1) ? "停止" : (leveling == 2) ? "启动" : "未知";
-    
-    // 解析VW100: 刚柔缸下降停止压力值
-    m_current_state.cylinderPressure = m_current_state.getVW(plc_address::VW_CYLINDER_PRESSURE) / 100.0; // 假设原始值需要除以100
-    
-    // 解析VW104: 升降平台1上升停止压力值
-    m_current_state.platform1Pressure = m_current_state.getVW(plc_address::VW_PLATFORM1_PRESSURE) / 100.0;
-    
-    // 解析VW108: 升降平台2上升停止压力值
-    m_current_state.platform2Pressure = m_current_state.getVW(plc_address::VW_PLATFORM2_PRESSURE) / 100.0;
-    
-    // 解析VW112: 平台倾斜角度
-    m_current_state.tiltAngle = m_current_state.getVW(plc_address::VW_TILT_ANGLE) / 10.0; // 假设原始值需要除以10
-    
-    // 解析VW116: 平台位置信息
-    m_current_state.platformPosition = m_current_state.getVW(plc_address::VW_POSITION);
-}
-
-/**
- * @brief 向PLC写入数据
- * @details 解析命令并写入对应的PLC地址
- * @param cmd 写入命令
- * @return 成功返回true，失败返回false
- */
-bool PLCManager::write_plc_data(const std::string& cmd) {
-    if (!m_is_connected || m_modbus_ctx == nullptr) {
-        SPDLOG_ERROR("PLC未连接，无法执行写入操作");
-        return false;
+    if (alarm == 0) {
+        m_current_state.alarmStatus = "油温低";
+    } else if (alarm & 0x01) {
+        m_current_state.alarmStatus = "油温高";
+    } else if (alarm & 0x02) {
+        m_current_state.alarmStatus = "液位低";
+    } else if (alarm & 0x04) {
+        m_current_state.alarmStatus = "液位高";
+    } else if (alarm & 0x08) {
+        m_current_state.alarmStatus = "滤芯堵";
+    } else {
+        m_current_state.alarmStatus = "未知报警";
     }
     
-    SPDLOG_DEBUG("准备向PLC写入命令: {}", cmd);
+    // 解析VD1010: 刚柔缸下降停止压力值 (float)
+    m_current_state.cylinderPressure = m_current_state.getVD(plc_address::VD_CYLINDER_PRESSURE);
     
-    // 解析命令格式：操作类型 参数
-    std::istringstream iss(cmd);
-    std::string operation;
-    iss >> operation;
+    // 解析VD1014: 升降平台上升停止压力值 (float)
+    m_current_state.liftPressure = m_current_state.getVD(plc_address::VD_LIFT_PRESSURE);
     
-    int result = -1;
+    // 解析VD1018: 平台1倾斜角度 (float)
+    m_current_state.platform1TiltAngle = m_current_state.getVD(plc_address::VD_PLATFORM1_TILT);
     
-    // 根据PLC地址表处理不同操作
-    if (operation == "SET_MODE") {
-        std::string mode;
-        iss >> mode;
-        uint8_t value = (mode == "manual") ? 1 : 2; // 1=手动, 2=自动
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_OPERATION_MODE, value);
-    }
-    else if (operation == "EMERGENCY_STOP") {
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_EMERGENCY_STOP, 2); // 2=急停
-    }
-    else if (operation == "RESET") {
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_EMERGENCY_STOP, 1); // 1=复位
-    }
-    else if (operation == "OIL_PUMP") {
-        std::string state;
-        iss >> state;
-        uint8_t value = (state == "start") ? 2 : 1; // 1=停止, 2=启动
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_OIL_PUMP, value);
-    }
-    else if (operation == "CYLINDER") {
-        std::string action;
-        iss >> action;
-        
-        uint8_t value = 0;
-        if (action == "down_stop") {
-            value = 1; // 下降停止
-        }
-        else if (action == "down_pressure") {
-            value = 2; // 下降加压
-        }
-        else if (action == "up_stop") {
-            value = 4; // 上升停止
-        }
-        else if (action == "up") {
-            value = 8; // 上升
-        }
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_CYLINDER_STATE, value);
-    }
-    else if (operation == "PLATFORM1") {
-        std::string action;
-        iss >> action;
-        
-        uint8_t value = 0;
-        if (action == "up") {
-            value = 1; // 上升
-        }
-        else if (action == "up_stop") {
-            value = 2; // 上升停止
-        }
-        else if (action == "down") {
-            value = 4; // 下降
-        }
-        else if (action == "down_stop") {
-            value = 8; // 下降停止
-        }
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_LIFT_PLATFORM1, value);
-    }
-    else if (operation == "PLATFORM2") {
-        std::string action;
-        iss >> action;
-        
-        uint8_t value = 0;
-        if (action == "up") {
-            value = 1; // 上升
-        }
-        else if (action == "up_stop") {
-            value = 2; // 上升停止
-        }
-        else if (action == "down") {
-            value = 4; // 下降
-        }
-        else if (action == "down_stop") {
-            value = 8; // 下降停止
-        }
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_LIFT_PLATFORM2, value);
-    }
-    else if (operation == "HEATER") {
-        std::string state;
-        iss >> state;
-        uint8_t value = (state == "start") ? 2 : 1; // 1=停止, 2=启动
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_HEATER, value);
-    }
-    else if (operation == "COOLING") {
-        std::string state;
-        iss >> state;
-        uint8_t value = (state == "start") ? 2 : 1; // 1=停止, 2=启动
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_AIR_COOLING, value);
-    }
-    else if (operation == "LEVELING") {
-        std::string state;
-        iss >> state;
-        uint8_t value = (state == "start") ? 2 : 1; // 1=停止, 2=启动
-        result = modbus_write_bit(m_modbus_ctx, plc_address::VB_LEVELING, value);
-    }
-    else {
-        SPDLOG_ERROR("未知的PLC操作命令: {}", cmd);
-        return false;
-    }
+    // 解析VD1022: 平台2倾斜角度 (float)
+    m_current_state.platform2TiltAngle = m_current_state.getVD(plc_address::VD_PLATFORM2_TILT);
     
-    if (result == -1) {
-        SPDLOG_ERROR("PLC写入操作失败: {}", modbus_strerror(errno));
-        return false;
-    }
+    // 解析VD1026: 平台1位置信息 (float)
+    m_current_state.platform1Position = m_current_state.getVD(plc_address::VD_PLATFORM1_POS);
     
-    SPDLOG_INFO("PLC写入操作成功");
-    
-    // 读取最新状态
-    return read_plc_data();
+    // 解析VD1030: 平台2位置信息 (float)
+    m_current_state.platform2Position = m_current_state.getVD(plc_address::VD_PLATFORM2_POS);
 }
 
 /**
  * @brief 执行高级业务操作
  * @details 将业务层面的操作转换为PLC层面的命令并执行
  * @param operation 操作指令
+ * @return 操作是否成功执行
  */
-void PLCManager::execute_operation(const std::string& operation) {
+bool PLCManager::execute_operation(const std::string& operation) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    // 将业务操作转换为PLC命令
-    bool success = false;
+    if (!m_is_connected || m_modbus_ctx == nullptr) {
+        SPDLOG_ERROR("PLC未连接，无法执行操作: {}", operation);
+        return false;
+    }
     
-    if (operation == "自动模式") {
-        success = write_plc_data("SET_MODE auto");
+    int result = -1;
+    
+    // 仅保留M地址操作
+    if (operation == "刚性支撑") {  // JSON请求中state="刚性支撑"
+        // 对应M22.1
+        result = modbus_write_bit(m_modbus_ctx, 22*8 + 1, 1);
+        SPDLOG_DEBUG("执行刚性支撑命令，写入M22.1=1");
     }
-    else if (operation == "手动模式") {
-        success = write_plc_data("SET_MODE manual");
+    else if (operation == "柔性复位") {  // JSON请求中state="柔性复位"
+        // 对应M22.2
+        result = modbus_write_bit(m_modbus_ctx, 22*8 + 2, 1);
+        SPDLOG_DEBUG("执行柔性复位命令，写入M22.2=1");
     }
-    else if (operation == "急停") {
-        success = write_plc_data("EMERGENCY_STOP");
+    else if (operation == "平台1上升" || operation == "平台1升高") {  // JSON请求中state="升高"，platformNum=1
+        // 对应M22.3
+        result = modbus_write_bit(m_modbus_ctx, 22*8 + 3, 1);
+        SPDLOG_DEBUG("执行平台1上升命令，写入M22.3=1");
     }
-    else if (operation == "复位") {
-        success = write_plc_data("RESET");
+    else if (operation == "平台1下降" || operation == "平台1复位") {  // JSON请求中state="复位"，platformNum=1
+        // 对应M22.4
+        result = modbus_write_bit(m_modbus_ctx, 22*8 + 4, 1);
+        SPDLOG_DEBUG("执行平台1复位命令，写入M22.4=1");
     }
-    else if (operation == "油泵启动") {
-        success = write_plc_data("OIL_PUMP start");
+    else if (operation == "平台2上升" || operation == "平台2升高") {  // JSON请求中state="升高"，platformNum=2
+        // 对应M22.5
+        result = modbus_write_bit(m_modbus_ctx, 22*8 + 5, 1);
+        SPDLOG_DEBUG("执行平台2上升命令，写入M22.5=1");
     }
-    else if (operation == "油泵停止") {
-        success = write_plc_data("OIL_PUMP stop");
+    else if (operation == "平台2下降" || operation == "平台2复位") {  // JSON请求中state="复位"，platformNum=2
+        // 对应M22.6
+        result = modbus_write_bit(m_modbus_ctx, 22*8 + 6, 1);
+        SPDLOG_DEBUG("执行平台2复位命令，写入M22.6=1");
     }
-    else if (operation == "刚柔缸下降停止") {
-        success = write_plc_data("CYLINDER down_stop");
+    else if (operation == "平台1调平" || operation == "1号平台调平") {  // JSON请求中state="调平"，platformNum=1
+        // 对应M22.7
+        result = modbus_write_bit(m_modbus_ctx, 22*8 + 7, 1);
+        SPDLOG_DEBUG("执行平台1调平命令，写入M22.7=1");
     }
-    else if (operation == "刚柔缸下降加压") {
-        success = write_plc_data("CYLINDER down_pressure");
+    else if (operation == "平台1调平复位" || operation == "1号平台调平复位") {  // JSON请求中state="调平复位"，platformNum=1
+        // 对应M23.0
+        result = modbus_write_bit(m_modbus_ctx, 23*8 + 0, 1);
+        SPDLOG_DEBUG("执行平台1调平复位命令，写入M23.0=1");
     }
-    else if (operation == "刚柔缸上升停止") {
-        success = write_plc_data("CYLINDER up_stop");
+    else if (operation == "平台2调平" || operation == "2号平台调平") {  // JSON请求中state="调平"，platformNum=2
+        // 对应M23.1
+        result = modbus_write_bit(m_modbus_ctx, 23*8 + 1, 1);
+        SPDLOG_DEBUG("执行平台2调平命令，写入M23.1=1");
     }
-    else if (operation == "刚柔缸上升") {
-        success = write_plc_data("CYLINDER up");
-    }
-    else if (operation == "平台1上升") {
-        success = write_plc_data("PLATFORM1 up");
-    }
-    else if (operation == "平台1上升停止") {
-        success = write_plc_data("PLATFORM1 up_stop");
-    }
-    else if (operation == "平台1下降") {
-        success = write_plc_data("PLATFORM1 down");
-    }
-    else if (operation == "平台1下降停止") {
-        success = write_plc_data("PLATFORM1 down_stop");
-    }
-    else if (operation == "平台2上升") {
-        success = write_plc_data("PLATFORM2 up");
-    }
-    else if (operation == "平台2上升停止") {
-        success = write_plc_data("PLATFORM2 up_stop");
-    }
-    else if (operation == "平台2下降") {
-        success = write_plc_data("PLATFORM2 down");
-    }
-    else if (operation == "平台2下降停止") {
-        success = write_plc_data("PLATFORM2 down_stop");
-    }
-    else if (operation == "电加热启动") {
-        success = write_plc_data("HEATER start");
-    }
-    else if (operation == "电加热停止") {
-        success = write_plc_data("HEATER stop");
-    }
-    else if (operation == "风冷启动") {
-        success = write_plc_data("COOLING start");
-    }
-    else if (operation == "风冷停止") {
-        success = write_plc_data("COOLING stop");
-    }
-    else if (operation == "调平启动") {
-        success = write_plc_data("LEVELING start");
-    }
-    else if (operation == "调平停止") {
-        success = write_plc_data("LEVELING stop");
+    else if (operation == "平台2调平复位" || operation == "2号平台调平复位") {  // JSON请求中state="调平复位"，platformNum=2
+        // 对应M23.2
+        result = modbus_write_bit(m_modbus_ctx, 23*8 + 2, 1);
+        SPDLOG_DEBUG("执行平台2调平复位命令，写入M23.2=1");
     }
     else {
         SPDLOG_WARN("未实现的PLC操作: {}", operation);
+        return false;
     }
     
-    if (!success) {
-        SPDLOG_ERROR("执行操作失败: {}", operation);
+    if (result == -1) {
+        SPDLOG_ERROR("执行操作失败: {} (错误: {})", operation, modbus_strerror(errno));
+        return false;  // 操作失败，返回false
+    } else {
+        SPDLOG_INFO("成功执行操作: {}", operation);
+        return true;   // 操作成功，返回true
     }
 }

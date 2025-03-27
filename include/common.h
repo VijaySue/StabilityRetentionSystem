@@ -31,27 +31,32 @@ namespace constants {
  * @namespace plc_address
  * @brief PLC地址定义
  * @details 根据西门子S7系列PLC地址映射表定义，用于Modbus TCP通信
- * @note VB: 字节型(8位, uint8_t) VW: 字型(16位, int16_t)
+ * @note 更新地址映射：VB=字节(8位) VD=双字(32位,float)
  */
 namespace plc_address {
-    // VB 地址（字节类型，8位）
-    const uint16_t VB_OPERATION_MODE = 1000;  // 自动按钮（操作）: 1=手动, 2=自动
-    const uint16_t VB_EMERGENCY_STOP = 1001;  // 急停按钮: 1=复位, 2=急停
-    const uint16_t VB_OIL_PUMP = 1002;        // 油泵状态: 1=停止, 2=启动
-    const uint16_t VB_CYLINDER_STATE = 1003;  // 刚柔缸状态: 1=下降停止, 2=下降加压, 4=上升停止, 8=上升停止
-    const uint16_t VB_LIFT_PLATFORM1 = 1004;  // 升降平台1状态: 1=上升, 2=上升停止, 4=下降, 8=下降停止
-    const uint16_t VB_LIFT_PLATFORM2 = 1005;  // 升降平台2状态: 1=上升, 2=上升停止, 4=下降, 8=下降停止
-    const uint16_t VB_HEATER = 1006;          // 电加热状态: 1=停止, 2=启动
-    const uint16_t VB_AIR_COOLING = 1007;     // 风冷状态: 1=停止, 2=启动
-    const uint16_t VB_ALARM = 1008;           // 报警信号: 0=油温低, 1=油温高, 2=液位低, 4=液位高, 8=滤芯堵
-    const uint16_t VB_LEVELING = 1009;        // 电动缸调平: 1=停止, 2=启动
+    // VB1000 位定义（布尔类型）
+    const uint16_t VB_CONTROL_BYTE = 1000;    // 控制字节，包含多个布尔值
+    const uint8_t BIT_OPERATION_MODE = 0;     // 自动按钮（操作）: 1=自动, 0=手动
+    const uint8_t BIT_EMERGENCY_STOP = 1;     // 急停按钮: 1=正常, 0=急停
+    const uint8_t BIT_OIL_PUMP = 2;           // 油泵状态: 1=启动, 0=停止
+    const uint8_t BIT_HEATER = 3;             // 电加热状态: 1=加热, 0=停止
+    const uint8_t BIT_AIR_COOLING = 4;        // 风冷状态: 1=启动, 0=停止
+    const uint8_t BIT_LEVELING1 = 5;          // 1#电动缸调平: 1=启动, 0=停止
+    const uint8_t BIT_LEVELING2 = 6;          // 2#电动缸调平: 1=启动, 0=停止
+
+    // 状态字节定义
+    const uint16_t VB_CYLINDER_STATE = 1001;  // 刚柔缸状态: 1=下降停止, 2=下降加压, 4=上升停止, 8=上升加压
+    const uint16_t VB_LIFT_PLATFORM1 = 1002;  // 升降平台1状态: 1=上升, 2=上升停止, 4=下降, 8=下降停止
+    const uint16_t VB_LIFT_PLATFORM2 = 1003;  // 升降平台2状态: 1=上升, 2=上升停止, 4=下降, 8=下降停止
+    const uint16_t VB_ALARM = 1004;           // 报警信号: 0=油温低, 1=油温高, 2=液位低, 4=液位高, 8=滤芯堵
     
-    // VW 地址（字类型，16位）
-    const uint16_t VW_CYLINDER_PRESSURE = 100;  // 刚柔缸下降停止压力值
-    const uint16_t VW_PLATFORM1_PRESSURE = 104; // 升降平台1上升停止压力值
-    const uint16_t VW_PLATFORM2_PRESSURE = 108; // 升降平台2上升停止压力值
-    const uint16_t VW_TILT_ANGLE = 112;        // 平台倾斜角度
-    const uint16_t VW_POSITION = 116;          // 平台位置信息
+    // VD 地址（双字类型，32位浮点）
+    const uint16_t VD_CYLINDER_PRESSURE = 1010;  // 刚柔缸下降停止压力值
+    const uint16_t VD_LIFT_PRESSURE = 1014;      // 升降平台上升停止压力值
+    const uint16_t VD_PLATFORM1_TILT = 1018;     // 平台1倾斜角度
+    const uint16_t VD_PLATFORM2_TILT = 1022;     // 平台2倾斜角度
+    const uint16_t VD_PLATFORM1_POS = 1026;      // 平台1位置信息
+    const uint16_t VD_PLATFORM2_POS = 1030;      // 平台2位置信息
 }
 
 /**
@@ -64,31 +69,37 @@ struct DeviceState {
     /**
      * @struct RawData
      * @brief PLC原始数据存储结构
-     * @details 按照VB和VW地址类型分别存储原始二进制数据
+     * @details 按照VB和VD地址类型分别存储原始二进制数据
      */
     struct RawData {
         uint8_t vb_data[2000] = {0};   // VB地址范围的原始数据 (字节类型)
-        int16_t vw_data[200] = {0};    // VW地址范围的原始数据 (字类型)
+        float vd_data[2000] = {0.0f};  // VD地址范围的原始数据 (32位浮点型)
     } raw;
     
     // 解析后的状态信息（用于API响应和显示）
-    std::string operationMode;     // 操作模式："手动"/"自动"
-    std::string emergencyStop;     // 急停状态："复位"/"急停"
-    std::string oilPumpStatus;     // 油泵状态："停止"/"启动"
-    std::string cylinderState;     // 刚柔缸状态："下降停止"/"下降加压"/"上升停止"/"上升"
+    std::string operationMode;     // 操作模式："自动"/"手动"
+    std::string emergencyStop;     // 急停状态："正常"/"急停"
+    std::string oilPumpStatus;     // 油泵状态："启动"/"停止"
+    std::string cylinderState;     // 刚柔缸状态："下降停止"/"下降加压"/"上升停止"/"上升加压"
     std::string platform1State;    // 升降平台1状态："上升"/"上升停止"/"下降"/"下降停止"
     std::string platform2State;    // 升降平台2状态："上升"/"上升停止"/"下降"/"下降停止"
-    std::string heaterStatus;      // 电加热状态："停止"/"启动"
-    std::string coolingStatus;     // 风冷状态："停止"/"启动"
-    std::string alarmStatus;       // 报警状态信息："油温低"/"油温高"/"液位低"/"液位高"/"滤芯堵"
-    std::string levelingStatus;    // 电动缸调平："停止"/"启动"
+    std::string heaterStatus;      // 电加热状态："加热"/"停止"
+    std::string coolingStatus;     // 风冷状态："启动"/"停止"
+    
+    // 报警状态信息，API中作为单独端点上报
+    std::string alarmStatus;       // 报警状态："油温低"/"油温高"/"液位低"/"液位高"/"滤芯堵"
+    
+    // 电动缸调平状态
+    std::string leveling1Status;   // 1#电动缸调平："停止"/"启动"
+    std::string leveling2Status;   // 2#电动缸调平："停止"/"启动"
     
     // 解析后的数值指标
-    double cylinderPressure;       // 刚柔缸下降停止压力值
-    double platform1Pressure;      // 升降平台1上升停止压力值
-    double platform2Pressure;      // 升降平台2上升停止压力值
-    double tiltAngle;              // 平台倾斜角度
-    int platformPosition;          // 平台位置信息
+    float cylinderPressure;        // 刚柔缸下降停止压力值
+    float liftPressure;            // 升降平台上升停止压力值
+    float platform1TiltAngle;      // 平台1倾斜角度
+    float platform2TiltAngle;      // 平台2倾斜角度
+    float platform1Position;       // 平台1位置信息
+    float platform2Position;       // 平台2位置信息
     
     /**
      * @brief 获取VB地址对应的字节值
@@ -100,12 +111,12 @@ struct DeviceState {
     }
     
     /**
-     * @brief 获取VW地址对应的字值
-     * @param address PLC的VW地址
-     * @return 对应地址的字值
+     * @brief 获取VD地址对应的浮点值
+     * @param address PLC的VD地址
+     * @return 对应地址的浮点值
      */
-    inline int16_t getVW(uint16_t address) const { 
-        return raw.vw_data[address]; 
+    inline float getVD(uint16_t address) const { 
+        return raw.vd_data[address]; 
     }
     
     /**
@@ -118,12 +129,12 @@ struct DeviceState {
     }
     
     /**
-     * @brief 设置VW地址对应的字值
-     * @param address PLC的VW地址
+     * @brief 设置VD地址对应的浮点值
+     * @param address PLC的VD地址
      * @param value 要设置的值
      */
-    inline void setVW(uint16_t address, int16_t value) { 
-        raw.vw_data[address] = value; 
+    inline void setVD(uint16_t address, float value) { 
+        raw.vd_data[address] = value; 
     }
     
     /**
