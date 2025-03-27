@@ -161,7 +161,6 @@ struct DeviceState {
         }
     }
 };
-
 /**
  * @brief 状态转换工具函数 - 将设备状态转换为JSON字符串
  * @param state 设备状态对象

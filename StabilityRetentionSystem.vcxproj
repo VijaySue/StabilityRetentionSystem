@@ -105,6 +105,7 @@
     <None Include="scripts\uninstall_service.sh" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\alarm_monitor.h" />
     <ClInclude Include="include\callback_client.h" />
     <ClInclude Include="include\common.h" />
     <ClInclude Include="include\config_manager.h" />
@@ -113,6 +114,7 @@
     <ClInclude Include="include\task_manager.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\alarm_monitor.cpp" />
     <ClCompile Include="src\callback_client.cpp" />
     <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\config_manager.cpp" />

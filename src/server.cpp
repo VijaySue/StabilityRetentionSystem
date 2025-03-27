@@ -18,15 +18,6 @@ using namespace web::http;
 using namespace web::http::experimental::listener;
 
 /**
- * @brief 获取libmodbus库版本
- * @return 版本信息字符串
- * @details 由于libmodbus没有直接提供版本信息API，返回编译时信息
- */
-std::string get_libmodbus_version() {
-    return "libmodbus (编译时版本)";
-}
-
-/**
  * @brief 创建错误响应JSON
  * @param message 错误信息
  * @return JSON错误响应对象
@@ -84,9 +75,6 @@ void StabilityServer::init_routes() {
         }
         else if (path == "/stability/platformHorizontal/control") {
             handle_platform_horizontal_control(request);
-        }
-        else if (path == "/stability/error/report") {
-            handle_error_report(request);
         }
         else {
             request.reply(status_codes::NotFound);
@@ -432,79 +420,4 @@ void StabilityServer::handle_device_state(http_request request) {
         
         request.reply(status_codes::InternalError, error_response);
     }
-}
-
-/**
- * @brief 错误上报处理
- * @param request HTTP请求对象
- * @details 处理系统错误和异常上报
- *          请求参数：
- *          - alarm: 报警信息（必填）
- *          - source: 报警来源（可选）
- *          - level: 报警级别（可选）
- */
-void StabilityServer::handle_error_report(http_request request) {
-    request.extract_json()
-        .then([=](web::json::value body) {
-        try {
-            SPDLOG_INFO("收到错误上报请求");
-            
-            // 参数校验
-            if (!body.has_field("alarm") || !body.has_field("timestamp")) {
-                SPDLOG_WARN("错误上报请求参数不完整");
-                
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("请求参数不完整，需要alarm和timestamp字段");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-
-            const std::string alarm = utility::conversions::to_utf8string(body["alarm"].as_string());
-            const int64_t timestamp = body["timestamp"].as_number().to_int64();
-            
-            SPDLOG_WARN("系统报警信息: {}, 时间戳: {}", alarm, timestamp);
-            
-            // 验证报警信息是否合法
-            const std::vector<std::string> valid_alarms = {
-                "油温低", "油温高", "液位低", "液位高", "滤芯堵"
-            };
-            
-            bool valid_alarm = false;
-            for (const auto& valid : valid_alarms) {
-                if (alarm == valid) {
-                    valid_alarm = true;
-                    break;
-                }
-            }
-            
-            if (!valid_alarm) {
-                SPDLOG_WARN("无效的报警信息: {}", alarm);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("无效的alarm值，可选值为：油温低, 油温高, 液位低, 液位高, 滤芯堵");
-                request.reply(status_codes::BadRequest, error_response);
-                return;
-            }
-            
-            // 记录完整的报警信息
-            SPDLOG_ERROR("系统报警: 信息={}, 时间={}", alarm, timestamp);
-            
-            // 返回成功响应
-            web::json::value response;
-            response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["code"] = web::json::value::number(200);
-            request.reply(status_codes::OK, response);
-        }
-        catch (const std::exception& e) {
-            SPDLOG_ERROR("错误上报请求处理失败: {}", e.what());
-            web::json::value error_response;
-            error_response["msg"] = web::json::value::string("error");
-            error_response["code"] = web::json::value::number(400);
-            error_response["error"] = web::json::value::string(e.what());
-            request.reply(status_codes::BadRequest, error_response);
-        }
-            });
 }

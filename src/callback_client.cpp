@@ -108,3 +108,28 @@ void CallbackClient::send_platform_horizontal_callback(int taskId, int defectId,
         }
             });
 }
+
+void CallbackClient::send_alarm_callback(const std::string& alarm_description) {
+    web::json::value body;
+    body["alarm"] = web::json::value::string(alarm_description);
+    body["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+
+    // 发送POST请求到边缘系统报警接口
+    m_client.request(web::http::methods::POST, "/stability/error/report", body)
+        .then([=](web::http::http_response response) {
+            if (response.status_code() != web::http::status_codes::OK) {
+                SPDLOG_ERROR("报警回调失败，报警描述: {}，状态码: {}", alarm_description, response.status_code());
+                return;
+            }
+            SPDLOG_INFO("成功发送报警回调，报警描述: {}", alarm_description);
+        })
+        .then([=](pplx::task<void> previousTask) {
+            try {
+                previousTask.get();
+            }
+            catch (const std::exception& e) {
+                SPDLOG_CRITICAL("报警回调异常，报警描述: {}，错误: {}", alarm_description, e.what());
+            }
+        });
+}

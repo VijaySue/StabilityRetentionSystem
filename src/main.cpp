@@ -13,6 +13,7 @@
 #include "../include/common.h"
 #include "../include/config_manager.h"
 #include "../include/plc_manager.h"
+#include "../include/alarm_monitor.h"
 
 // 信号处理
 std::condition_variable_any shutdown_cv;
@@ -28,24 +29,6 @@ void signal_handler(int signal) {
 int main(int argc, char* argv[]) {
     // 初始化默认日志级别，以便能看到配置加载的日志
     spdlog::set_level(spdlog::level::info);
-
-    // 加载配置文件
-    if (ConfigManager::instance().load_config("config/config.ini")) {
-        std::cout << "成功加载配置文件" << std::endl;
-        
-        // 输出当前配置用于验证
-        auto& config = ConfigManager::instance();
-        std::cout << "配置值:" << std::endl;
-        std::cout << "  服务器主机: " << config.get_server_host() << std::endl;
-        std::cout << "  服务器端口: " << config.get_server_port() << std::endl;
-        std::cout << "  PLC IP地址: " << config.get_plc_ip() << std::endl;
-        std::cout << "  PLC端口: " << config.get_plc_port() << std::endl;
-        std::cout << "  边缘系统地址: " << config.get_edge_system_address() << std::endl;
-        std::cout << "  边缘系统端口: " << config.get_edge_system_port() << std::endl;
-        std::cout << "  日志级别: " << config.get_log_level() << std::endl;
-    } else {
-        std::cerr << "无法加载配置文件，使用默认配置" << std::endl;
-    }
 
     // 设置日志级别
     std::string log_level = ConfigManager::instance().get_log_level();
@@ -87,12 +70,20 @@ int main(int argc, char* argv[]) {
 
 		// 连接PLC设备
 		PLCManager::instance().connect_plc();
+        
+        // 启动报警监控系统，每1秒检查一次报警信号
+        AlarmMonitor::instance().start(1000);
+        SPDLOG_INFO("已启动报警监控系统");
 
         // 等待关闭信号
         {
             std::unique_lock<std::mutex> lock(shutdown_mutex);
             shutdown_cv.wait(lock, []() { return shutdown_requested; });
         }
+
+        // 停止报警监控
+        AlarmMonitor::instance().stop();
+        SPDLOG_INFO("已停止报警监控系统");
 
         // 关闭服务器
         server.close().wait();

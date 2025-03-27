@@ -1,26 +1,26 @@
 /**
  * @file plc_manager.h
  * @brief PLC通信管理类定义
- * @details 负责与PLC设备进行通信，实现Modbus TCP协议的数据读写操作
+ * @details 负责与PLC设备进行通信，实现西门子S7协议的数据读写操作
  * @author VijaySue
  * @date 2024-3-11
  */
 #pragma once
 #include "common.h"
 #include <mutex>
-#include <modbus/modbus.h>  // 添加libmodbus库支持
 #include <string>
 #include <chrono>
 #include <thread>
 #include <spdlog/spdlog.h>
+#include <snap7.h>  // 添加Snap7库支持
 
 /**
  * @brief PLC通信管理类（单例）
  * 
- * @details 负责与PLC设备进行通信，实现Modbus TCP协议的数据读写操作
+ * @details 负责与PLC设备进行通信，实现西门子S7协议的数据读写操作
  *          支持稳定性保持系统对设备的监控和控制功能
  *          实现了自动重连和错误处理机制
- * @note 使用libmodbus 3.1.10库实现通信功能
+ * @note 使用Snap7库实现与西门子PLC的通信功能
  */
 class PLCManager {
 public:
@@ -76,9 +76,16 @@ public:
      */
     bool execute_operation(const std::string& operation);
 
+    /**
+     * @brief 从PLC读取报警信号
+     * @details 仅读取报警信号地址(VB_ALARM)的数据，用于报警监控
+     * @return 读取的报警信号值，如果读取失败返回255
+     */
+    uint8_t read_alarm_signal();
+
     // PLC设备配置常量
     static std::string get_plc_ip();  // PLC的IP地址
-    static int get_plc_port();        // Modbus TCP默认端口
+    static int get_plc_port();        // Modbus TCP默认端口，对于Snap7为102
 
 private:
     /**
@@ -90,11 +97,11 @@ private:
     PLCManager& operator=(const PLCManager&) = delete;   // 禁止赋值操作
     
     // 静态成员变量
-    static modbus_t* m_modbus_ctx;    // Modbus上下文
+    static TS7Client* m_client;    // Snap7客户端对象
     static DeviceState m_current_state; // 当前设备状态
     static std::mutex m_mutex;        // 互斥锁，保证线程安全
     static std::thread m_monitor_thread; // 监控线程
     static bool m_running;            // 运行状态标志
     
     bool m_is_connected;       // 连接状态
-};
+}; 

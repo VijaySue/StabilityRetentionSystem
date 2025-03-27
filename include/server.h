@@ -75,13 +75,6 @@ private:
      * @details 处理 /stability/device/state GET请求，获取系统所有设备状态
      */
     void handle_device_state(web::http::http_request request);
-    
-    /**
-     * @brief 错误异常上报接口
-     * @param request HTTP请求对象
-     * @details 处理 /stability/error/report POST请求，上报报警信息
-     */
-    void handle_error_report(web::http::http_request request);
 
     web::http::experimental::listener::http_listener m_listener; // 监听器
 };

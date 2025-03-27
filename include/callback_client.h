@@ -43,6 +43,13 @@ public:
      */
     void send_platform_horizontal_callback(int taskId, int defectId, int platformNum, const std::string& state);
 
+    /**
+     * @brief 发送系统报警信号
+     * @param alarm_description 报警描述（"油温低"，"油温高"，"液位低"，"液位高"，"滤芯堵"等）
+     * @details 使用文档规定的/stability/error/report接口上报报警信息
+     */
+    void send_alarm_callback(const std::string& alarm_description);
+
 private:
     CallbackClient();  // 私有构造函数确保单例
     web::http::client::http_client m_client;  // HTTP客户端
