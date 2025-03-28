@@ -30,10 +30,9 @@
 - **配置管理器**：管理系统配置参数
   - 采用单例模式设计，确保全局唯一配置实例
   - 支持从INI格式的配置文件加载配置
-  - 提供服务器、PLC、日志等核心配置项
+  - 提供服务器、PLC等核心配置项
   - 支持配置项默认值，确保系统在配置文件缺失时仍能正常运行
   - 支持运行时动态加载配置
-- **日志系统**：基于spdlog实现的多级日志记录系统
 
 ## 技术栈
 
@@ -104,11 +103,12 @@ cmake .. && make -j
 sudo make install
 
 # 安装 Snap7 西门子通信库
-git clone https://github.com/SCADACS/snap7.git
-cd snap7/build/unix
+wget https://sourceforge.net/projects/snap7/files/snap7-full/1.4.0/snap7-full-1.4.0.7z
+7z x snap7-full-1.4.0.7z
+cd snap7-full-1.4.0/build/unix
 make -f x86_64_linux.mk
 sudo cp lib/libsnap7.so /usr/lib/
-sudo cp ../../src/sys/snap7.h /usr/include/
+sudo cp ../../../release/Wrappers/c-cpp/snap7.h /usr/include/
 
 # 刷新动态库缓存
 sudo ldconfig
@@ -137,17 +137,13 @@ sudo make install
 [server]
 port = 8080              # API 服务监听端口
 host = 0.0.0.0           # API 服务监听地址，0.0.0.0表示监听所有接口
+callback_url = http://localhost:9090/callback
 
 [plc]
-ip = 192.168.28.57        # PLC设备IP地址,不需要http前缀
-port = 102               # PLC设备Modbus TCP端口
-
-[logging]
-level = info             # 日志级别：trace, debug, info, warning, error, critical
-
-[edge_system]
-address = http://192.168.28.57  # 边缘系统服务器地址
-port = 8080                         # 边缘系统服务端口 
+ip = 192.168.1.10        # PLC设备IP地址
+rack = 0                 # PLC机架号
+slot = 1                 # PLC槽号
+check_interval = 1000    # 状态检查间隔(毫秒)
 ```
 
 2. 系统启动时会自动加载配置文件：
@@ -166,17 +162,29 @@ port = 8080                         # 边缘系统服务端口
 ./bin/stability_server
 ```
 
+4. 安装为系统服务（自动启动）：
+
+```bash
+# 安装系统服务（自动开机启动）
+sudo ./scripts/install_service.sh
+
+# 卸载系统服务
+sudo ./scripts/uninstall_service.sh
+```
+
 ### 配置文件说明
 
 系统通过 `config/config.ini` 文件进行配置，主要参数包括：
 
-| 段落      | 参数    | 说明        | 默认值          |
-| ------- | ----- | --------- | ------------ |
-| server  | port  | HTTP服务器端口 | 8080         |
-| server  | host  | 服务器监听地址   | 0.0.0.0      |
-| plc     | ip    | PLC设备IP地址 | 192.168.1.10 |
-| plc     | port  | plc设备端口   | 102          |
-| logging | level | 日志级别      | info         |
+| 段落     | 参数             | 说明                  | 默认值          |
+| -------- | ---------------- | --------------------- | --------------- |
+| server   | port             | HTTP服务器端口        | 8080            |
+| server   | host             | 服务器监听地址        | 0.0.0.0         |
+| server   | callback_url     | 回调地址              | localhost:9090  |
+| plc      | ip               | PLC设备IP地址         | 192.168.1.10    |
+| plc      | rack             | PLC机架号             | 0               |
+| plc      | slot             | PLC槽号               | 1               |
+| plc      | check_interval   | 状态检查间隔(毫秒)    | 1000            |
 
 ### API使用示例
 
@@ -211,11 +219,9 @@ curl -X POST http://localhost:8080/stability/platform/height \
    - 检查PLC设备IP、机架号和槽号是否正确
    - 确认网络连接是否正常
    - 检查防火墙设置是否阻止了通信
-   - 查看日志文件了解详细错误信息
 
 2. **系统启动失败**
    
-   - 查看日志文件中的错误信息
    - 确认配置文件格式正确
    - 检查服务器端口是否被占用
 
@@ -223,7 +229,6 @@ curl -X POST http://localhost:8080/stability/platform/height \
    
    - 检查请求参数格式是否正确
    - 确认API访问路径是否正确
-   - 查看服务器日志了解详细错误原因
 
 ## 项目文档
 
@@ -246,8 +251,7 @@ curl -X POST http://localhost:8080/stability/platform/height \
 StabilityRetentionSystem/
 ├── bin/                 # 编译后的可执行文件目录
 ├── config/             # 配置文件目录
-│   ├── config.ini      # 主配置文件
-│   └── logging.conf    # 日志配置文件
+│   └── config.ini      # 主配置文件
 ├── docs/               # 文档目录
 │   ├── API接口文档.md
 │   ├── 部署指南.md
@@ -260,6 +264,8 @@ StabilityRetentionSystem/
 │   ├── common.h       # 公共功能和工具
 │   └── callback_client.h # 回调客户端
 ├── scripts/           # 脚本文件目录
+│   ├── install_service.sh # 服务安装脚本
+│   └── uninstall_service.sh # 服务卸载脚本
 ├── src/               # 源代码目录
 │   ├── main.cpp      # 程序入口点
 │   ├── server.cpp    # HTTP服务器实现
@@ -279,7 +285,7 @@ StabilityRetentionSystem/
 - **PLC通信模块**：基于Snap7实现与西门子S7 PLC设备的通信
 - **任务管理模块**：管理异步任务的创建、执行和状态跟踪
 - **配置管理模块**：管理系统配置参数，支持从INI文件加载配置
-- **公共功能模块**：提供日志、错误处理等通用功能
+- **公共功能模块**：提供错误处理等通用功能
 - **回调客户端模块**：实现与上层系统的回调通信
 
 ### 编译构建
