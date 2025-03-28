@@ -4,7 +4,7 @@
 
 稳定性保持系统是一套用于控制稳定平台的自动化系统，通过与PLC设备集成，实现对平台升降、水平调整和刚柔支撑等功能的精确控制。本系统提供基于HTTP的REST API接口，允许上层应用通过网络远程控制和监控平台状态。
 
-本系统使用C++语言开发，基于C++ REST SDK提供Web服务，使用libmodbus库实现与PLC设备的通信，在Linux操作系统上运行。
+本系统使用C++语言开发，基于C++ REST SDK提供Web服务，使用Snap7库实现与西门子S7 PLC设备的通信，在Linux操作系统上运行。
 
 ## 主要功能
 
@@ -24,7 +24,7 @@
 
 - **HTTP服务器**：基于C++ REST SDK实现，提供RESTful API接口
 - **API处理器**：处理HTTP请求，验证参数，调用相应的服务
-- **PLC通信模块**：基于libmodbus实现与PLC设备的通信
+- **PLC通信模块**：基于Snap7实现与西门子S7 PLC设备的通信
 - **设备状态管理器**：实时获取和解析设备状态数据
 - **任务管理器**：管理异步任务的创建、执行、状态跟踪
 - **配置管理器**：管理系统配置参数
@@ -39,7 +39,7 @@
 
 - **编程语言**：C++17
 - **Web框架**：C++ REST SDK (cpprestsdk) 2.10.19
-- **PLC通信**：libmodbus 3.1.10
+- **PLC通信**：Snap7 1.4.0
 - **日志系统**：spdlog 1.9.2
 - **JSON处理**：nlohmann/json 3.11.3
 - **格式化库**：fmt 9.1.0
@@ -50,6 +50,7 @@
 ### 系统要求
 
 - **开发环境**：
+  
   - 操作系统：Windows 11
   - IDE：Visual Studio 2022
   - 构建工具：Make
@@ -57,23 +58,22 @@
   - 版本控制：Git
 
 - **运行环境**：
+  
   - 操作系统：Ubuntu Server 24.04
   - 编译器：GCC 11+
   - 构建工具：Make
   - 包管理器：vcpkg
 
 - **硬件要求**：
+  
   - 最低配置：双核CPU，4GB内存，100MB磁盘空间
   - 推荐配置：四核CPU，8GB内存，1GB磁盘空间
 
 ### 安装依赖项
 
 ```bash
-# 安装 libmodbus 库
-sudo apt-get update
-sudo apt-get install -y libmodbus-dev
-
 # 安装 OpenSSL
+sudo apt-get update
 sudo apt-get install -y libssl-dev
 
 # 安装 Boost
@@ -85,18 +85,33 @@ vcpkg install cpprestsdk:x64-linux
 vcpkg install nlohmann-json:x64-linux
 
 # 安装 spdlog 和 fmt
-# 从源码编译安装
+# 可以使用apt安装
+sudo apt-get install -y libspdlog-dev libfmt-dev
+
+# 或从源码编译安装
 git clone https://github.com/gabime/spdlog.git
 cd spdlog
 git checkout v1.9.2
-make
+mkdir build && cd build
+cmake .. && make -j
 sudo make install
 
 git clone https://github.com/fmtlib/fmt.git
 cd fmt
 git checkout 9.1.0
-make
+mkdir build && cd build
+cmake .. && make -j
 sudo make install
+
+# 安装 Snap7 西门子通信库
+git clone https://github.com/SCADACS/snap7.git
+cd snap7/build/unix
+make -f x86_64_linux.mk
+sudo cp lib/libsnap7.so /usr/lib/
+sudo cp ../../src/sys/snap7.h /usr/include/
+
+# 刷新动态库缓存
+sudo ldconfig
 ```
 
 ### 编译构建
@@ -124,14 +139,19 @@ port = 8080              # API 服务监听端口
 host = 0.0.0.0           # API 服务监听地址，0.0.0.0表示监听所有接口
 
 [plc]
-ip = 192.168.1.10        # PLC设备IP地址
-port = 502               # PLC设备Modbus TCP端口
+ip = 192.168.28.57        # PLC设备IP地址,不需要http前缀
+port = 102               # PLC设备Modbus TCP端口
 
 [logging]
 level = info             # 日志级别：trace, debug, info, warning, error, critical
+
+[edge_system]
+address = http://192.168.28.57  # 边缘系统服务器地址
+port = 8080                         # 边缘系统服务端口 
 ```
 
 2. 系统启动时会自动加载配置文件：
+   
    - 使用`ConfigManager`单例类加载配置
    - 如果配置文件不存在，将使用默认配置值
    - 支持运行时动态加载配置
@@ -150,13 +170,13 @@ level = info             # 日志级别：trace, debug, info, warning, error, cr
 
 系统通过 `config/config.ini` 文件进行配置，主要参数包括：
 
-| 段落 | 参数 | 说明 | 默认值 |
-|------|------|------|---------|
-| server | port | HTTP服务器端口 | 8080 |
-| server | host | 服务器监听地址 | 0.0.0.0 |
-| plc | ip | PLC设备IP地址 | 192.168.1.10 |
-| plc | port | PLC设备端口 | 502 |
-| logging | level | 日志级别 | info |
+| 段落      | 参数    | 说明        | 默认值          |
+| ------- | ----- | --------- | ------------ |
+| server  | port  | HTTP服务器端口 | 8080         |
+| server  | host  | 服务器监听地址   | 0.0.0.0      |
+| plc     | ip    | PLC设备IP地址 | 192.168.1.10 |
+| plc     | port  | plc设备端口   | 102          |
+| logging | level | 日志级别      | info         |
 
 ### API使用示例
 
@@ -187,16 +207,20 @@ curl -X POST http://localhost:8080/stability/platform/height \
 ### 常见问题
 
 1. **无法连接到PLC设备**
-   - 检查PLC设备IP和端口是否正确
+   
+   - 检查PLC设备IP、机架号和槽号是否正确
    - 确认网络连接是否正常
    - 检查防火墙设置是否阻止了通信
+   - 查看日志文件了解详细错误信息
 
 2. **系统启动失败**
+   
    - 查看日志文件中的错误信息
    - 确认配置文件格式正确
    - 检查服务器端口是否被占用
 
 3. **API响应错误**
+   
    - 检查请求参数格式是否正确
    - 确认API访问路径是否正确
    - 查看服务器日志了解详细错误原因
@@ -235,8 +259,6 @@ StabilityRetentionSystem/
 │   ├── config_manager.h # 配置管理模块
 │   ├── common.h       # 公共功能和工具
 │   └── callback_client.h # 回调客户端
-├── lib/               # 第三方库目录
-├── logs/              # 日志文件目录
 ├── scripts/           # 脚本文件目录
 ├── src/               # 源代码目录
 │   ├── main.cpp      # 程序入口点
@@ -254,7 +276,7 @@ StabilityRetentionSystem/
 主要模块说明：
 
 - **HTTP服务器模块**：基于C++ REST SDK实现，提供RESTful API接口
-- **PLC通信模块**：基于libmodbus实现与PLC设备的通信
+- **PLC通信模块**：基于Snap7实现与西门子S7 PLC设备的通信
 - **任务管理模块**：管理异步任务的创建、执行和状态跟踪
 - **配置管理模块**：管理系统配置参数，支持从INI文件加载配置
 - **公共功能模块**：提供日志、错误处理等通用功能
@@ -271,6 +293,7 @@ make
 # 清理项目
 make clean
 ```
+
 ### 贡献指南
 
 如果您想为项目做出贡献，请遵循以下步骤：
@@ -294,10 +317,9 @@ make clean
 
 ## 版本历史
 
-| 版本 | 日期 | 变更内容 |
-|------|------|---------|
-| 1.0.0 | 2024-3-3 | 初始版本发布 |
-| 1.1.0 | 2024-3-6 | 增加平台2控制功能 |
-| 1.2.0 | 2024-3-9 | 优化任务管理，增强错误处理 |
-| 2.0.0 | 2024-3-11 | 重构API接口，提升性能，更新开发环境 |
-
+| 版本    | 日期        | 变更内容                               |
+| ----- | --------- | ---------------------------------- |
+| 1.0.0 | 2024-3-3  | 初始版本发布                             |
+| 1.1.0 | 2024-3-6  | 增加平台2控制功能                          |
+| 1.2.0 | 2024-3-9  | 优化任务管理，增强错误处理                      |
+| 2.0.0 | 2024-3-28 | 重构API接口，提升性能，更新开发环境，使用Snap7实现PLC通信 |
