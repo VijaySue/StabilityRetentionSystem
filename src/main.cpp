@@ -30,6 +30,30 @@ int main(int argc, char* argv[]) {
     // 初始化默认日志级别，以便能看到配置加载的日志
     spdlog::set_level(spdlog::level::info);
 
+    // 加载配置文件
+    std::string config_file = "config/config.ini";
+    if (argc > 2) {
+        config_file = argv[2];  // 允许通过命令行指定配置文件路径
+    }
+    
+    SPDLOG_INFO("开始加载配置文件: {}", config_file);
+    if (ConfigManager::instance().load_config(config_file)) {
+        SPDLOG_INFO("成功加载配置文件");
+        
+        // 输出当前配置以便诊断
+        auto& config = ConfigManager::instance();
+        SPDLOG_INFO("配置值:");
+        SPDLOG_INFO("  服务器主机: {}", config.get_server_host());
+        SPDLOG_INFO("  服务器端口: {}", config.get_server_port());
+        SPDLOG_INFO("  PLC IP地址: {}", config.get_plc_ip());
+        SPDLOG_INFO("  PLC端口: {}", config.get_plc_port());
+        SPDLOG_INFO("  边缘系统地址: {}", config.get_edge_system_address());
+        SPDLOG_INFO("  边缘系统端口: {}", config.get_edge_system_port());
+        SPDLOG_INFO("  日志级别: {}", config.get_log_level());
+    } else {
+        SPDLOG_ERROR("无法加载配置文件，将使用默认配置");
+    }
+
     // 设置日志级别
     std::string log_level = ConfigManager::instance().get_log_level();
     if (log_level == "trace") spdlog::set_level(spdlog::level::trace);
@@ -71,8 +95,8 @@ int main(int argc, char* argv[]) {
 		// 连接PLC设备
 		PLCManager::instance().connect_plc();
         
-        // 启动报警监控系统，每1秒检查一次报警信号
-        AlarmMonitor::instance().start(1000);
+        // 启动报警监控系统，每5秒检查一次报警信号
+        AlarmMonitor::instance().start(5000);
         SPDLOG_INFO("已启动报警监控系统");
 
         // 等待关闭信号

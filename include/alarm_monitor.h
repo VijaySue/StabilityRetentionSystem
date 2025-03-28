@@ -32,6 +32,17 @@
 class AlarmMonitor {
 public:
     /**
+     * @brief 报警上报状态结构体
+     * @details 用于记录报警上报状态和时间
+     */
+    struct AlarmReportStatus {
+        bool reported;                            // 是否已上报
+        std::chrono::steady_clock::time_point last_report_time; // 上次上报时间
+        
+        AlarmReportStatus() : reported(false) {} // 默认构造函数
+    };
+
+    /**
      * @brief 获取AlarmMonitor单例实例
      * @return AlarmMonitor单例的引用
      */
@@ -113,5 +124,5 @@ private:
     std::atomic<bool> m_enabled;              // 是否启用报警监控
     int m_interval_ms;                        // 检查间隔(毫秒)
     std::unordered_map<uint8_t, std::string> m_alarm_map; // 报警码映射表
-    std::unordered_map<uint8_t, bool> m_reported_alarms; // 已上报的报警记录，避免重复上报
+    std::unordered_map<uint8_t, AlarmReportStatus> m_reported_alarms; // 已上报的报警记录，避免频繁重复上报
 }; 

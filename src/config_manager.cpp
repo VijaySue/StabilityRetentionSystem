@@ -26,17 +26,6 @@ ConfigManager& ConfigManager::instance() {
 }
 
 /**
- * @brief 获取可执行文件的目录路径
- * @return 可执行文件所在目录的路径
- */
-std::filesystem::path get_executable_path() {
-    char result[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-    std::filesystem::path exe_path(count != -1 ? result : std::filesystem::current_path());
-    return exe_path.parent_path();
-}
-
-/**
  * @brief 加载配置文件
  * @details 从指定路径加载INI格式的配置文件
  *          支持注释（以#开头）和空行
@@ -45,20 +34,53 @@ std::filesystem::path get_executable_path() {
  * @param config_file 配置文件路径
  * @return 加载是否成功
  */
-bool ConfigManager::load_config(const std::string& config_file) {
-    // 直接从项目根目录加载配置文件
-    std::filesystem::path exe_dir = get_executable_path();
-    std::filesystem::path config_path = exe_dir.parent_path() / "config" / "config.ini";
+bool ConfigManager::load_config(const std::string& config_file) {    
+    // 尝试多个可能的配置文件路径
+    std::vector<std::filesystem::path> possible_paths;
     
-    std::cout << "尝试加载配置文件: " << config_path.string() << std::endl;
+    // 1. 直接使用传入的路径
+    possible_paths.push_back(config_file);
     
-    std::ifstream file(config_path);
+    // 2. 获取可执行文件目录
+    char result[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+    if (count != -1) {
+        std::filesystem::path exe_path(result);
+        std::filesystem::path exe_dir = exe_path.parent_path();
+        
+        // 3. 在可执行文件目录下查找
+        possible_paths.push_back(exe_dir / config_file);
+        
+        // 4. 在可执行文件的上一级目录下查找（如果在bin目录运行，这会找到项目根目录）
+        possible_paths.push_back(exe_dir.parent_path() / config_file);
+    }
+    
+    // 尝试当前工作目录
+    possible_paths.push_back(std::filesystem::current_path() / config_file);
+    // 尝试当前工作目录的上一级
+    possible_paths.push_back(std::filesystem::current_path().parent_path() / config_file);
+    
+    // 尝试每一个可能的路径
+    std::ifstream file;
+    std::filesystem::path valid_path;
+    
+    for (const auto& path : possible_paths) {
+        SPDLOG_INFO("尝试加载配置文件: {}", path.string());
+        file.open(path);
+        if (file.is_open()) {
+            valid_path = path;
+            SPDLOG_INFO("成功打开配置文件: {}", path.string());
+            break;
+        }
+    }
+    
     if (!file.is_open()) {
-        std::cerr << "无法打开配置文件: " << config_path.string() << std::endl;
+        SPDLOG_ERROR("无法打开配置文件，尝试了以下路径:");
+        for (const auto& path : possible_paths) {
+            SPDLOG_ERROR("  - {}", path.string());
+        }
         return false;
     }
-
-    std::cout << "成功打开配置文件: " << config_path.string() << std::endl;
     
     std::string line;
     std::string current_section = "";
@@ -85,7 +107,7 @@ bool ConfigManager::load_config(const std::string& config_file) {
             size_t end = line.find(']');
             if (end != std::string::npos) {
                 current_section = line.substr(1, end - 1);
-                std::cout << "行 " << line_number << ": 找到配置节 [" << current_section << "]" << std::endl;
+                SPDLOG_DEBUG("行 {}: 找到配置节 [{}]", line_number, current_section);
                 continue;
             }
         }
@@ -110,45 +132,44 @@ bool ConfigManager::load_config(const std::string& config_file) {
             // 再次去除尾部空格（在去除注释后）
             value.erase(value.find_last_not_of(" \t") + 1);
             
-            std::cout << "行 " << line_number << ": 读取配置项: [" << current_section << "] " 
-                      << key << " = " << value << std::endl;
+            SPDLOG_DEBUG("行 {}: 读取配置项: [{}] {} = {}", line_number, current_section, key, value);
             
             // 根据节和键设置相应的值
             try {
                 if (current_section == "server") {
                     if (key == "host") {
                         server_host = value;
-                        std::cout << "  设置server.host = " << server_host << std::endl;
+                        SPDLOG_DEBUG("设置server.host = {}", server_host);
                     }
                     else if (key == "port") {
                         server_port = std::stoi(value);
-                        std::cout << "  设置server.port = " << server_port << std::endl;
+                        SPDLOG_DEBUG("设置server.port = {}", server_port);
                     }
                 }
                 else if (current_section == "plc") {
                     if (key == "ip") {
                         plc_ip = value;
-                        std::cout << "  设置plc.ip = " << plc_ip << std::endl;
+                        SPDLOG_DEBUG("设置plc.ip = {}", plc_ip);
                     }
                     else if (key == "port") {
                         plc_port = std::stoi(value);
-                        std::cout << "  设置plc.port = " << plc_port << std::endl;
+                        SPDLOG_DEBUG("设置plc.port = {}", plc_port);
                     }
                 }
                 else if (current_section == "logging") {
                     if (key == "level") {
                         log_level = value;
-                        std::cout << "  设置logging.level = " << log_level << std::endl;
+                        SPDLOG_DEBUG("设置logging.level = {}", log_level);
                     }
                 }
                 else if (current_section == "edge_system") {
                     if (key == "address") {
                         edge_system_address = value;
-                        std::cout << "  设置edge_system.address = " << edge_system_address << std::endl;
+                        SPDLOG_DEBUG("设置edge_system.address = {}", edge_system_address);
                     }
                     else if (key == "port") {
                         edge_system_port = std::stoi(value);
-                        std::cout << "  设置edge_system.port = " << edge_system_port << std::endl;
+                        SPDLOG_DEBUG("设置edge_system.port = {}", edge_system_port);
                     }
                 }
                 else if (current_section == "security") {
@@ -172,43 +193,24 @@ bool ConfigManager::load_config(const std::string& config_file) {
                     }
                 }
                 else {
-                    std::cout << "警告: 在未知节 [" << current_section << "] 中的配置项将被忽略" << std::endl;
+                    SPDLOG_WARN("警告: 在未知节 [{}] 中的配置项将被忽略", current_section);
                 }
             } catch (const std::exception& e) {
-                std::cerr << "解析配置项时出错，行 " << line_number << ": " << e.what() << std::endl;
+                SPDLOG_ERROR("解析配置项时出错，行 {}: {}", line_number, e.what());
             }
         }
     }
     
-    // 如果没有找到security节，使用默认安全配置
-    bool found_security = false;
-    for (int i = 0; i < line_number; i++) {
-        file.clear();  // 清除文件流状态
-        file.seekg(0); // 回到文件开头
-        std::string search_line;
-        while (std::getline(file, search_line)) {
-            if (search_line.find("[security]") != std::string::npos) {
-                found_security = true;
-                break;
-            }
-        }
-    }
+    // 输出最终配置值
+    SPDLOG_INFO("配置加载完成，最终配置值:");
+    SPDLOG_INFO("  server.host = {}", server_host);
+    SPDLOG_INFO("  server.port = {}", server_port);
+    SPDLOG_INFO("  plc.ip = {}", plc_ip);
+    SPDLOG_INFO("  plc.port = {}", plc_port);
+    SPDLOG_INFO("  logging.level = {}", log_level);
+    SPDLOG_INFO("  edge_system.address = {}", edge_system_address);
+    SPDLOG_INFO("  edge_system.port = {}", edge_system_port);
     
-    if (!found_security) {
-        basic_auth_enabled_ = false;
-        ip_whitelist_enabled_ = false;
-    }
-    
-    std::cout << "\n配置加载完成，最终配置值:" << std::endl;
-    std::cout << "  server.host = " << server_host << std::endl;
-    std::cout << "  server.port = " << server_port << std::endl;
-    std::cout << "  plc.ip = " << plc_ip << std::endl;
-    std::cout << "  plc.port = " << plc_port << std::endl;
-    std::cout << "  logging.level = " << log_level << std::endl;
-    std::cout << "  edge_system.address = " << edge_system_address << std::endl;
-    std::cout << "  edge_system.port = " << edge_system_port << std::endl;
-    
-    SPDLOG_INFO("成功加载配置文件: {}", config_path.string());
     return true;
 }
 

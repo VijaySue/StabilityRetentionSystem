@@ -83,6 +83,12 @@ public:
      */
     uint8_t read_alarm_signal();
 
+    /**
+     * @brief 获取PLC连接状态
+     * @return 如果PLC已连接返回true，否则返回false
+     */
+    bool is_connected() const { return m_is_connected; }
+
     // PLC设备配置常量
     static std::string get_plc_ip();  // PLC的IP地址
     static int get_plc_port();        // Modbus TCP默认端口，对于Snap7为102

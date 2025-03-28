@@ -69,6 +69,8 @@ PLCManager::~PLCManager() {
  * @return 成功返回true，失败返回false
  */
 bool PLCManager::connect_plc() {
+    SPDLOG_INFO("开始尝试连接PLC设备，IP: {}, 端口: {}", get_plc_ip(), get_plc_port());
+    
     // 释放之前的连接
     if (m_client != nullptr) {
         m_client->Disconnect();
@@ -76,41 +78,60 @@ bool PLCManager::connect_plc() {
         m_client = nullptr;
     }
 
-    try {
-        // 创建新的Snap7客户端
-        m_client = new TS7Client();
-        if (m_client == nullptr) {
-            SPDLOG_ERROR("创建Snap7客户端失败");
-            return false;
+    // 连接重试次数和间隔
+    const int MAX_RETRY = 2;
+    const int RETRY_DELAY_MS = 1000;
+    
+    for (int retry = 0; retry <= MAX_RETRY; retry++) {
+        if (retry > 0) {
+            SPDLOG_INFO("第{}次重试连接PLC...", retry);
+            std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
         }
+        
+        try {
+            // 创建新的Snap7客户端
+            m_client = new TS7Client();
+            if (m_client == nullptr) {
+                SPDLOG_ERROR("创建Snap7客户端失败");
+                continue; // 尝试下一次重试
+            }
 
-        // 设置连接超时时间
-        m_client->SetConnectionType(CONNTYPE_BASIC); // 基本连接类型
-        m_client->SetConnectionParams(get_plc_ip().c_str(), 0, 2); // 0,2表示第2机架第0槽位
+            // 设置连接超时时间（默认是3秒）
+            m_client->SetConnectionType(CONNTYPE_BASIC); // 基本连接类型
+            
+            // 显示IP和端口信息用于诊断
+            SPDLOG_INFO("设置连接参数: IP={}, 机架=0, 槽位=2", get_plc_ip());
+            m_client->SetConnectionParams(get_plc_ip().c_str(), 0, 2); // 0,2表示第2机架第0槽位
 
-        // 建立连接
-        int result = m_client->ConnectTo(get_plc_ip().c_str(), 0, 2); // 0,2表示第2机架第0槽位
-        if (result != 0) {
-            SPDLOG_ERROR("连接到PLC设备失败: 错误码 {}", result);
-            delete m_client;
-            m_client = nullptr;
+            // 建立连接
+            SPDLOG_INFO("开始连接到PLC...");
+            int result = m_client->ConnectTo(get_plc_ip().c_str(), 0, 2); // 0,2表示第2机架第0槽位
+            if (result != 0) {
+                char error_text[256];
+                Cli_ErrorText(result, error_text, sizeof(error_text));
+                SPDLOG_ERROR("连接到PLC设备失败: 错误码 {}, 错误信息: {}", result, error_text);
+                delete m_client;
+                m_client = nullptr;
+                m_is_connected = false;
+                continue; // 尝试下一次重试
+            }
+
+            m_is_connected = true;
+            SPDLOG_INFO("成功连接到西门子PLC设备，IP: {}", get_plc_ip());
+            return true;
+        }
+        catch (const std::exception& e) {
+            SPDLOG_ERROR("连接PLC设备时发生异常: {}", e.what());
+            if (m_client != nullptr) {
+                delete m_client;
+                m_client = nullptr;
+            }
             m_is_connected = false;
-            return false;
         }
-
-        m_is_connected = true;
-        SPDLOG_INFO("成功连接到西门子PLC设备，IP: {}", get_plc_ip());
-        return true;
     }
-    catch (const std::exception& e) {
-        SPDLOG_ERROR("连接PLC设备时发生异常: {}", e.what());
-        if (m_client != nullptr) {
-            delete m_client;
-            m_client = nullptr;
-        }
-        m_is_connected = false;
-        return false;
-    }
+    
+    SPDLOG_ERROR("多次尝试后仍无法连接到PLC设备");
+    return false;
 }
 
 /**
@@ -136,14 +157,28 @@ void PLCManager::disconnect_plc() {
 DeviceState PLCManager::get_current_state() {
     std::lock_guard<std::mutex> lock(m_mutex);
     
+    // 检查是否已连接，如未连接则尝试重连
+    if (!m_is_connected || m_client == nullptr) {
+        SPDLOG_ERROR("PLC未连接，尝试重新连接...");
+        if (!connect_plc()) {
+            SPDLOG_ERROR("PLC连接失败");
+            throw std::runtime_error("PLC连接失败");
+        }
+    }
+    
     // 尝试从PLC读取数据
     if (!read_plc_data()) {
         // 读取失败，尝试重新连接
-        SPDLOG_WARN("无法从PLC读取数据，尝试重新连接...");
+        SPDLOG_ERROR("无法从PLC读取数据，尝试重新连接...");
+        m_is_connected = false; // 标记为未连接状态
         if (connect_plc()) {
             if (!read_plc_data()) {
                 SPDLOG_ERROR("重连后仍无法从PLC读取数据");
+                throw std::runtime_error("无法从PLC读取数据");
             }
+        } else {
+            SPDLOG_ERROR("PLC重连失败");
+            throw std::runtime_error("PLC重连失败");
         }
     }
     
@@ -159,115 +194,191 @@ DeviceState PLCManager::get_current_state() {
  * @return 成功返回true，失败返回false
  */
 bool PLCManager::read_plc_data() {
+    // 检查是否已连接
     if (!m_is_connected || m_client == nullptr) {
+        SPDLOG_ERROR("PLC未连接，无法读取数据");
         return false;
     }
     
     // 创建缓冲区用于读取数据
-    byte buffer[256] = {0};
+    byte vb_buffer[256] = {0};  // VB数据缓冲区
+    int32_t vd_buffer = 0;      // VD数据缓冲区
     int result;
     
     // 读取VB1000控制字节（包含多个位状态）
-    // 从DB区读取
-    result = m_client->DBRead(1000, 0, 1, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1000, 1, S7WLByte, &vb_buffer[0]);
     if (result != 0) {
-        SPDLOG_ERROR("读取控制字节失败: 错误码 {}", result);
+        // 获取错误描述
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        
+        SPDLOG_ERROR("读取VB1000控制字节失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 如果是连接错误，标记连接状态
+        if (result == 32) { // 错误码32通常表示连接已断开
+            SPDLOG_ERROR("检测到PLC连接已断开");
+            m_is_connected = false; // 更新连接状态
+        }
+        
         return false;
     }
-    m_current_state.setVB(plc_address::VB_CONTROL_BYTE, buffer[0]);
+    m_current_state.setVB(plc_address::VB_CONTROL_BYTE, vb_buffer[0]);
     
     // 读取VB1001: 刚柔缸状态
-    result = m_client->DBRead(1000, 1, 1, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1001, 1, S7WLByte, &vb_buffer[0]);
     if (result != 0) {
-        SPDLOG_ERROR("读取刚柔缸状态失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VB1001刚柔缸状态失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    m_current_state.setVB(plc_address::VB_CYLINDER_STATE, buffer[0]);
+    m_current_state.setVB(plc_address::VB_CYLINDER_STATE, vb_buffer[0]);
     
     // 读取VB1002: 升降平台1状态
-    result = m_client->DBRead(1000, 2, 1, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1002, 1, S7WLByte, &vb_buffer[0]);
     if (result != 0) {
-        SPDLOG_ERROR("读取升降平台1状态失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VB1002升降平台1状态失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM1, buffer[0]);
+    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM1, vb_buffer[0]);
     
     // 读取VB1003: 升降平台2状态
-    result = m_client->DBRead(1000, 3, 1, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1003, 1, S7WLByte, &vb_buffer[0]);
     if (result != 0) {
-        SPDLOG_ERROR("读取升降平台2状态失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VB1003升降平台2状态失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM2, buffer[0]);
+    m_current_state.setVB(plc_address::VB_LIFT_PLATFORM2, vb_buffer[0]);
     
     // 读取VB1004: 报警信号
-    result = m_client->DBRead(1000, 4, 1, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1004, 1, S7WLByte, &vb_buffer[0]);
     if (result != 0) {
-        SPDLOG_ERROR("读取报警信号失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VB1004报警信号失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    m_current_state.setVB(plc_address::VB_ALARM, buffer[0]);
-    
-    // 读取VD类型浮点数据
-    float value;
+    m_current_state.setVB(plc_address::VB_ALARM, vb_buffer[0]);
     
     // 读取VD1010: 刚柔缸下降停止压力值
-    result = m_client->DBRead(1000, 10, 4, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1010, 4, S7WLDWord, &vd_buffer);
     if (result != 0) {
-        SPDLOG_ERROR("读取刚柔缸下降停止压力值失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VD1010刚柔缸下降停止压力值失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    // 转换为浮点数
-    memcpy(&value, &buffer[0], sizeof(float));
-    m_current_state.setVD(plc_address::VD_CYLINDER_PRESSURE, value);
+    std::cout << "VD1010原始值: " << vd_buffer << std::endl;
+    m_current_state.setVD(plc_address::VD_CYLINDER_PRESSURE, vd_buffer);
     
     // 读取VD1014: 升降平台上升停止压力值
-    result = m_client->DBRead(1000, 14, 4, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1014, 4, S7WLDWord, &vd_buffer);
     if (result != 0) {
-        SPDLOG_ERROR("读取升降平台上升停止压力值失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VD1014升降平台上升停止压力值失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    memcpy(&value, &buffer[0], sizeof(float));
-    m_current_state.setVD(plc_address::VD_LIFT_PRESSURE, value);
+    std::cout << "VD1014原始值: " << vd_buffer << std::endl;
+    m_current_state.setVD(plc_address::VD_LIFT_PRESSURE, vd_buffer);
     
     // 读取VD1018: 平台1倾斜角度
-    result = m_client->DBRead(1000, 18, 4, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1018, 4, S7WLDWord, &vd_buffer);
     if (result != 0) {
-        SPDLOG_ERROR("读取平台1倾斜角度失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VD1018平台1倾斜角度失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    memcpy(&value, &buffer[0], sizeof(float));
-    m_current_state.setVD(plc_address::VD_PLATFORM1_TILT, value);
+    std::cout << "VD1018原始值: " << vd_buffer << std::endl;
+    m_current_state.setVD(plc_address::VD_PLATFORM1_TILT, vd_buffer);
     
     // 读取VD1022: 平台2倾斜角度
-    result = m_client->DBRead(1000, 22, 4, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1022, 4, S7WLDWord, &vd_buffer);
     if (result != 0) {
-        SPDLOG_ERROR("读取平台2倾斜角度失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VD1022平台2倾斜角度失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    memcpy(&value, &buffer[0], sizeof(float));
-    m_current_state.setVD(plc_address::VD_PLATFORM2_TILT, value);
+    std::cout << "VD1022原始值: " << vd_buffer << std::endl;
+    m_current_state.setVD(plc_address::VD_PLATFORM2_TILT, vd_buffer);
     
     // 读取VD1026: 平台1位置信息
-    result = m_client->DBRead(1000, 26, 4, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1026, 4, S7WLDWord, &vd_buffer);
     if (result != 0) {
-        SPDLOG_ERROR("读取平台1位置信息失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VD1026平台1位置信息失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    memcpy(&value, &buffer[0], sizeof(float));
-    m_current_state.setVD(plc_address::VD_PLATFORM1_POS, value);
+    std::cout << "VD1026原始值: " << vd_buffer << std::endl;
+    m_current_state.setVD(plc_address::VD_PLATFORM1_POS, vd_buffer);
     
     // 读取VD1030: 平台2位置信息
-    result = m_client->DBRead(1000, 30, 4, &buffer[0]);
+    result = m_client->ReadArea(S7AreaDB, 1, 1030, 4, S7WLDWord, &vd_buffer);
     if (result != 0) {
-        SPDLOG_ERROR("读取平台2位置信息失败: 错误码 {}", result);
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VD1030平台2位置信息失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 检查是否是连接错误
+        if (result == 32) {
+            m_is_connected = false;
+        }
         return false;
     }
-    memcpy(&value, &buffer[0], sizeof(float));
-    m_current_state.setVD(plc_address::VD_PLATFORM2_POS, value);
-    
-    // 解析所有原始数据
-    parse_raw_values();
+    std::cout << "VD1030原始值: " << vd_buffer << std::endl;
+    m_current_state.setVD(plc_address::VD_PLATFORM2_POS, vd_buffer);
     
     return true;
 }
@@ -353,22 +464,22 @@ void PLCManager::parse_raw_values() {
         m_current_state.alarmStatus = "未知报警";
     }
     
-    // 解析VD1010: 刚柔缸下降停止压力值 (float)
+    // 解析VD1010: 刚柔缸下降停止压力值
     m_current_state.cylinderPressure = m_current_state.getVD(plc_address::VD_CYLINDER_PRESSURE);
     
-    // 解析VD1014: 升降平台上升停止压力值 (float)
+    // 解析VD1014: 升降平台上升停止压力值
     m_current_state.liftPressure = m_current_state.getVD(plc_address::VD_LIFT_PRESSURE);
     
-    // 解析VD1018: 平台1倾斜角度 (float)
+    // 解析VD1018: 平台1倾斜角度
     m_current_state.platform1TiltAngle = m_current_state.getVD(plc_address::VD_PLATFORM1_TILT);
     
-    // 解析VD1022: 平台2倾斜角度 (float)
+    // 解析VD1022: 平台2倾斜角度
     m_current_state.platform2TiltAngle = m_current_state.getVD(plc_address::VD_PLATFORM2_TILT);
     
-    // 解析VD1026: 平台1位置信息 (float)
+    // 解析VD1026: 平台1位置信息
     m_current_state.platform1Position = m_current_state.getVD(plc_address::VD_PLATFORM1_POS);
     
-    // 解析VD1030: 平台2位置信息 (float)
+    // 解析VD1030: 平台2位置信息
     m_current_state.platform2Position = m_current_state.getVD(plc_address::VD_PLATFORM2_POS);
 }
 
@@ -381,9 +492,13 @@ void PLCManager::parse_raw_values() {
 bool PLCManager::execute_operation(const std::string& operation) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
+    // 检查是否已连接，如未连接则尝试重连
     if (!m_is_connected || m_client == nullptr) {
-        SPDLOG_ERROR("PLC未连接，无法执行操作: {}", operation);
-        return false;
+        SPDLOG_ERROR("PLC未连接，尝试重新连接...");
+        if (!connect_plc()) {
+            SPDLOG_ERROR("PLC连接失败，无法执行操作: {}", operation);
+            return false;
+        }
     }
     
     int result = -1;
@@ -447,7 +562,24 @@ bool PLCManager::execute_operation(const std::string& operation) {
     }
     
     if (result != 0) {
-        SPDLOG_ERROR("执行操作失败: {} (错误码: {})", operation, result);
+        // 获取错误描述
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        
+        SPDLOG_ERROR("执行操作失败: {} (错误码: {}, 错误信息: {})", operation, result, error_text);
+        
+        // 如果错误表明连接已断开，尝试重新连接
+        if (result == 32) { // 错误码32通常表示连接已断开
+            SPDLOG_ERROR("检测到PLC连接断开，尝试重新连接...");
+            m_is_connected = false; // 标记为未连接状态
+            if (connect_plc()) {
+                SPDLOG_INFO("PLC重新连接成功，重新尝试执行操作");
+                // 重新尝试执行操作
+                return execute_operation(operation);
+            }
+            SPDLOG_ERROR("PLC重连后仍然无法执行操作");
+        }
+        
         return false;  // 操作失败，返回false
     } else {
         SPDLOG_INFO("成功执行操作: {}", operation);
@@ -463,17 +595,42 @@ bool PLCManager::execute_operation(const std::string& operation) {
 uint8_t PLCManager::read_alarm_signal() {
     std::lock_guard<std::mutex> lock(m_mutex);
     
+    // 检查是否已连接，如未连接则尝试重连
     if (!m_is_connected || m_client == nullptr) {
-        SPDLOG_ERROR("PLC未连接，无法读取报警信号");
-        return 255; // 返回特殊值表示读取失败
+        SPDLOG_ERROR("PLC未连接，尝试重新连接...");
+        if (!connect_plc()) {
+            SPDLOG_ERROR("PLC连接失败，无法读取报警信号");
+            return 255; // 返回特殊值表示读取失败
+        }
     }
     
     byte buffer[1] = {0};
     
-    // 只读取VB1004: 报警信号
-    int result = m_client->DBRead(1000, 4, 1, &buffer[0]);
+    // 读取VB1004: 报警信号 (使用ReadArea方法访问V区域)
+    // S7AreaPE = 0x81 (输入区域), S7AreaPA = 0x82 (输出区域), S7AreaMK = 0x83 (标记区域), S7AreaDB = 0x84 (数据块区域)
+    // 在Snap7中，V区通常使用S7AreaDB(0x84)和DB号1表示
+    int result = m_client->ReadArea(S7AreaDB, 1, 1004, 1, S7WLByte, &buffer[0]);
     if (result != 0) {
-        SPDLOG_ERROR("读取报警信号失败: 错误码 {}", result);
+        // 获取错误描述
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        
+        SPDLOG_ERROR("读取VB1004报警信号失败: 错误码 {}, 错误信息: {}", result, error_text);
+        
+        // 如果错误表明连接已断开，尝试重新连接
+        if (result == 32) { // 错误码32通常表示连接已断开
+            SPDLOG_ERROR("检测到PLC连接断开，尝试重新连接...");
+            m_is_connected = false; // 标记为未连接状态
+            if (connect_plc()) {
+                SPDLOG_INFO("PLC重新连接成功，重新尝试读取报警信号");
+                result = m_client->ReadArea(S7AreaDB, 1, 1004, 1, S7WLByte, &buffer[0]);
+                if (result == 0) {
+                    return buffer[0]; // 重连后成功读取
+                }
+            }
+            SPDLOG_ERROR("PLC重连后仍然无法读取报警信号");
+        }
+        
         return 255; // 返回特殊值表示读取失败
     }
     

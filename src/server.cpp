@@ -96,9 +96,23 @@ void StabilityServer::init_routes() {
 void StabilityServer::handle_health(http_request request) {
     SPDLOG_DEBUG("处理系统状态检测请求");
     web::json::value response;
-    response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-    response["code"] = web::json::value::number(200);
-    response["status"] = web::json::value::string("online");
+    
+    // 检查PLC连接状态
+    PLCManager& plc = PLCManager::instance();
+    
+    // 直接尝试读取一次数据来验证连接状态
+    try {
+        DeviceState state = plc.get_current_state();
+        response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
+        response["code"] = web::json::value::number(200);
+        response["status"] = web::json::value::string("online");
+    } catch (const std::exception& e) {
+        SPDLOG_ERROR("读取PLC数据失败: {}", e.what());
+        response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
+        response["code"] = web::json::value::number(200);
+        response["status"] = web::json::value::string("offline");
+    }
+    
     request.reply(status_codes::OK, response);
 }
 
@@ -361,48 +375,91 @@ void StabilityServer::handle_device_state(http_request request) {
         // 获取设备状态
         DeviceState state = PLCManager::instance().get_current_state();
         
+        // 调试输出：打印原始状态数据
+        std::cout << "\n=== 设备状态数据 ===" << std::endl;
+        std::cout << "操作模式: " << state.operationMode << std::endl;
+        std::cout << "急停状态: " << state.emergencyStop << std::endl;
+        std::cout << "油泵状态: " << state.oilPumpStatus << std::endl;
+        std::cout << "刚柔缸状态: " << state.cylinderState << std::endl;
+        std::cout << "平台1状态: " << state.platform1State << std::endl;
+        std::cout << "平台2状态: " << state.platform2State << std::endl;
+        std::cout << "加热状态: " << state.heaterStatus << std::endl;
+        std::cout << "冷却状态: " << state.coolingStatus << std::endl;
+        std::cout << "报警状态: " << state.alarmStatus << std::endl;
+        std::cout << "1#调平状态: " << state.leveling1Status << std::endl;
+        std::cout << "2#调平状态: " << state.leveling2Status << std::endl;
+        std::cout << "刚柔缸压力: " << state.cylinderPressure << std::endl;
+        std::cout << "升降压力: " << state.liftPressure << std::endl;
+        std::cout << "平台1倾斜: " << state.platform1TiltAngle << std::endl;
+        std::cout << "平台2倾斜: " << state.platform2TiltAngle << std::endl;
+        std::cout << "平台1位置: " << state.platform1Position << std::endl;
+        std::cout << "平台2位置: " << state.platform2Position << std::endl;
+        std::cout << "时间戳: " << state.timestamp << std::endl;
+        std::cout << "==================\n" << std::endl;
+        
         // 使用新的转换函数生成JSON字符串
         std::string json_str = device_state_to_json(state);
         
+        // 调试输出：打印JSON字符串
+        std::cout << "=== JSON字符串 ===" << std::endl;
+        std::cout << json_str << std::endl;
+        std::cout << "==================\n" << std::endl;
+        
         // 根据参数筛选响应内容
         if (!query_params.empty()) {
-            // 如果有查询参数，可以解析json_str并进行过滤
-            auto json_obj = nlohmann::json::parse(json_str);
-            
-            // 检查是否有指定需要返回的字段
-            if (query_params.find(U("fields")) != query_params.end()) {
-                auto fields_param = query_params[U("fields")];
-                std::vector<std::string> fields;
+            try {
+                // 如果有查询参数，可以解析json_str并进行过滤
+                nlohmann::json json_obj = nlohmann::json::parse(json_str);
                 
-                // 分割字段参数
-                std::istringstream iss(utility::conversions::to_utf8string(fields_param));
-                std::string field;
-                while (std::getline(iss, field, ',')) {
-                    fields.push_back(field);
-                }
-                
-                if (!fields.empty()) {
-                    // 创建一个只包含指定字段的新JSON对象
-                    nlohmann::json filtered_json;
+                // 检查是否有指定需要返回的字段
+                if (query_params.find(U("fields")) != query_params.end()) {
+                    auto fields_param = query_params[U("fields")];
+                    std::vector<std::string> fields;
                     
-                    // 保留msg字段和timestamp作为基本响应
-                    if (json_obj.contains("msg")) {
-                        filtered_json["msg"] = json_obj["msg"];
-                    }
-                    if (json_obj.contains("timestamp")) {
-                        filtered_json["timestamp"] = json_obj["timestamp"];
-                    }
-                    
-                    // 添加请求的字段
-                    for (const auto& field : fields) {
-                        if (json_obj.contains(field)) {
-                            filtered_json[field] = json_obj[field];
+                    // 分割字段参数
+                    std::istringstream iss(utility::conversions::to_utf8string(fields_param));
+                    std::string field;
+                    while (std::getline(iss, field, ',')) {
+                        // 清理字段名中的空白字符
+                        field.erase(0, field.find_first_not_of(" \t\r\n"));
+                        field.erase(field.find_last_not_of(" \t\r\n") + 1);
+                        if (!field.empty()) {
+                            fields.push_back(field);
                         }
                     }
                     
-                    // 使用过滤后的JSON
-                    json_str = filtered_json.dump();
+                    if (!fields.empty()) {
+                        // 创建一个只包含指定字段的新JSON对象
+                        nlohmann::json filtered_json;
+                        
+                        // 保留msg字段和timestamp作为基本响应
+                        if (json_obj.contains("msg")) {
+                            filtered_json["msg"] = json_obj["msg"];
+                        }
+                        if (json_obj.contains("timestamp")) {
+                            filtered_json["timestamp"] = json_obj["timestamp"];
+                        }
+                        
+                        // 添加请求的字段
+                        for (const auto& field : fields) {
+                            if (json_obj.contains(field)) {
+                                filtered_json[field] = json_obj[field];
+                            }
+                        }
+                        
+                        // 使用过滤后的JSON
+                        json_str = filtered_json.dump();
+                        
+                        // 调试输出：打印过滤后的JSON
+                        std::cout << "=== 过滤后的JSON ===" << std::endl;
+                        std::cout << json_str << std::endl;
+                        std::cout << "==================\n" << std::endl;
+                    }
                 }
+            }
+            catch (const nlohmann::json::exception& e) {
+                SPDLOG_ERROR("JSON处理错误: {}", e.what());
+                throw std::runtime_error("JSON处理错误: " + std::string(e.what()));
             }
         }
         

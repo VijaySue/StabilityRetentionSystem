@@ -346,7 +346,7 @@ GET {{base_stability_url}}/stability/device/state?fields=platform1State,platform
 
 ### 6. 错误异常上报接口
 
-**请求路径**：`{{base_stability_url}}/stability/error/report`
+**请求路径**：`{{base_edge_url}}/stability/error/report`
 
 **请求方式**：POST
 
