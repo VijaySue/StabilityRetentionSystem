@@ -3,7 +3,7 @@
  * @brief 报警信号监控类实现
  * @details 实现报警信号的持续监控和异常上报功能
  * @author VijaySue
- * @date 2024-3-27
+ * @date 2024-3-29
  */
 
 #include "../include/alarm_monitor.h"
@@ -84,7 +84,7 @@ void AlarmMonitor::monitor_thread_func() {
     SPDLOG_INFO("报警监控线程已启动");
     
     // 添加初始延迟，确保PLC有足够时间完成初始连接和通信准备
-    const int INITIAL_DELAY_MS = 500;  // 启动时等待3秒
+    const int INITIAL_DELAY_MS = 500;  // 启动时等待500毫秒
     SPDLOG_INFO("等待{}毫秒让PLC通信初始化...", INITIAL_DELAY_MS);
     std::this_thread::sleep_for(std::chrono::milliseconds(INITIAL_DELAY_MS));
     
@@ -181,12 +181,6 @@ void AlarmMonitor::monitor_thread_func() {
     }
     
     SPDLOG_INFO("报警监控线程已退出");
-}
-
-uint8_t AlarmMonitor::check_alarm_status() {
-    // 获取当前PLC状态，直接读取报警信号
-    PLCManager& plc = PLCManager::instance();
-    return plc.read_alarm_signal();
 }
 
 std::string AlarmMonitor::parse_alarm_signal(uint8_t alarm_value) {

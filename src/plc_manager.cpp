@@ -3,8 +3,7 @@
  * @brief PLC通信管理器实现
  * @details 处理与西门子S7 PLC通信，读写PLC数据并解析状态
  * @author VijaySue
- * @version 2.0
- * @date 2024-3-11
+ * @date 2024-3-29
  */
 #include "../include/plc_manager.h"
 #include "../include/config_manager.h"
@@ -628,7 +627,6 @@ uint8_t PLCManager::read_alarm_signal() {
     
     // 添加读取之前的稳定性检查，确保连接真正稳定
     try {
-        const int CONNECTION_CHECK_DELAY_MS = 500;
         if (!m_client->Connected()) {
             SPDLOG_ERROR("PLC连接状态检查失败，将重置连接状态");
             m_is_connected = false;

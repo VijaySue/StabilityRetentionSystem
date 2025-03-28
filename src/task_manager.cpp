@@ -4,7 +4,7 @@
  * @details 负责处理异步任务队列，执行设备控制操作，并发送回调信息
  * @author VijaySue
  * @version 2.0
- * @date 2024-3-11
+ * @date 2024-3-29
  */
 #include "../include/task_manager.h"
 #include "../include/plc_manager.h"

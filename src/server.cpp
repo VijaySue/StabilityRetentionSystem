@@ -1,9 +1,9 @@
 /**
  * @file server.cpp
- * @brief RESTful API服务器实现
- * @details 提供HTTP接口以获取设备状态和控制设备操作
+ * @brief 服务器实现
+ * @details 处理HTTP请求，提供REST API接口
  * @author VijaySue
- * @date 2024-3-11
+ * @date 2024-3-29
  */
 #include "../include/server.h"
 #include <spdlog/spdlog.h>

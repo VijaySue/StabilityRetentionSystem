@@ -3,7 +3,7 @@
  * @brief 报警信号监控类定义
  * @details 单独线程监控报警信号地址，检测各类报警并调用错误异常上报接口
  * @author VijaySue
- * @date 2024-3-27
+ * @date 2024-3-29
  */
 #pragma once
 #include "common.h"
@@ -101,13 +101,6 @@ private:
      * @details 循环检查报警信号并上报异常
      */
     void monitor_thread_func();
-    
-    /**
-     * @brief 检查报警状态
-     * @details 从PLC读取报警信号，判断是否有报警
-     * @return 报警状态值
-     */
-    uint8_t check_alarm_status();
     
     /**
      * @brief 解析报警信号

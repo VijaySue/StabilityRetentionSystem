@@ -3,7 +3,7 @@
  * @brief 配置管理类实现
  * @details 实现配置文件的加载和解析功能
  * @author VijaySue
- * @date 2024-3-11
+ * @date 2024-3-29
  */
 
 #include "../include/config_manager.h"
@@ -223,8 +223,11 @@ bool ConfigManager::is_ip_allowed(const std::string& ip) const {
     for (const auto& allowed_ip : allowed_ips_) {
         // 支持CIDR格式的IP地址
         if (allowed_ip.find('/') != std::string::npos) {
-            // TODO: 实现CIDR匹配
-            // 这里需要添加CIDR匹配的实现
+            /**
+             * @brief 实现CIDR匹配
+             * @details 需要添加对CIDR格式IP地址段的支持，如192.168.0.0/24
+             * @note 当前版本仅支持精确IP匹配
+             */
             continue;
         }
         

@@ -3,7 +3,7 @@
  * @brief 配置管理类定义
  * @details 负责加载和管理系统配置文件，提供统一的配置访问接口
  * @author VijaySue
- * @date 2024-3-11
+ * @date 2024-3-29
  */
 
 #pragma once

@@ -1,10 +1,9 @@
 /**
  * @file common.h
- * @brief 公共定义和工具函数
- * @details 包含整个系统中共用的常量、类型定义、PLC地址映射和数据结构
+ * @brief 公共类和常量定义
+ * @details 定义系统中使用的公共数据结构和常量
  * @author VijaySue
- * @date 2024-3-11
- * @platform Windows开发，Linux远程调试
+ * @date 2024-3-29
  */
 #pragma once
 #include <string>
