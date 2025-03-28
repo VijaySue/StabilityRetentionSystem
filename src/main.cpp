@@ -92,8 +92,14 @@ int main(int argc, char* argv[]) {
         StabilityServer server(url);
         server.open().wait();
 
-		// 连接PLC设备
-		PLCManager::instance().connect_plc();
+        // 先尝试初始PLC连接
+        SPDLOG_INFO("尝试初始PLC连接...");
+        bool plc_connected = PLCManager::instance().connect_plc();
+        if (plc_connected) {
+            SPDLOG_INFO("初始PLC连接成功");
+        } else {
+            SPDLOG_ERROR("初始PLC连接失败，将通过报警监控系统持续尝试重连");
+        }
         
         // 启动报警监控系统，每5秒检查一次报警信号
         AlarmMonitor::instance().start(5000);

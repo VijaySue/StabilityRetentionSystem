@@ -83,6 +83,11 @@ bool AlarmMonitor::is_running() const {
 void AlarmMonitor::monitor_thread_func() {
     SPDLOG_INFO("报警监控线程已启动");
     
+    // 添加初始延迟，确保PLC有足够时间完成初始连接和通信准备
+    const int INITIAL_DELAY_MS = 500;  // 启动时等待3秒
+    SPDLOG_INFO("等待{}毫秒让PLC通信初始化...", INITIAL_DELAY_MS);
+    std::this_thread::sleep_for(std::chrono::milliseconds(INITIAL_DELAY_MS));
+    
     // 记录上次PLC连接状态，用于状态变化检测
     bool last_connection_ok = true;
     
@@ -108,22 +113,54 @@ void AlarmMonitor::monitor_thread_func() {
                     }
                 }
                 
+                // 处理PLC连接异常
+                if (!current_connection_ok) {
+                    SPDLOG_ERROR("检测到PLC连接异常，尝试重新连接...");
+                    // 主动触发PLC重连
+                    bool reconnect_success = plc.connect_plc();
+                    
+                    // 只有重连也失败时才上报连接异常
+                    if (!reconnect_success) {
+                        // 强制上报连接异常，不等待间隔
+                        report_alarm(255, "PLC连接故障", true);
+                        SPDLOG_ERROR("PLC重连失败，已上报连接故障");
+                    } else {
+                        SPDLOG_INFO("PLC重连成功，不上报连接故障");
+                        // 重连成功后，读取一次数据验证连接真正恢复
+                        uint8_t verify_value = plc.read_alarm_signal();
+                        if (verify_value != 255) {
+                            // 连接和通信都恢复正常
+                            SPDLOG_INFO("PLC连接已完全恢复");
+                            current_connection_ok = true;
+                        } else {
+                            // 连接成功但通信仍然有问题
+                            SPDLOG_ERROR("PLC连接成功但通信验证失败");
+                            report_alarm(255, "PLC通信验证失败", true);
+                        }
+                    }
+                }
+                
                 // 记录当前连接状态
                 last_connection_ok = current_connection_ok;
                 
-                // 如果不是"无报警"状态，则需要上报
+                // 如果不是"无报警"状态且连接是正常的，则需要上报
                 if (alarm_value != 16) {
-                    std::string alarm_description = parse_alarm_signal(alarm_value);
-                    
-                    // 对255特殊处理
-                    if (alarm_value == 255) {
-                        SPDLOG_ERROR("检测到PLC连接异常: 值={}, 描述={}", alarm_value, alarm_description);
+                    // 如果连接状态已恢复，但alarm_value还是255，说明是过渡状态，不报告异常
+                    if (alarm_value == 255 && current_connection_ok) {
+                        SPDLOG_DEBUG("连接已恢复但alarm_value仍为255，等待下次检查");
                     } else {
-                        SPDLOG_WARN("检测到报警信号: 值={}, 描述={}", alarm_value, alarm_description);
+                        std::string alarm_description = parse_alarm_signal(alarm_value);
+                        
+                        // 对255特殊处理，但避免重复上报
+                        if (alarm_value == 255) {
+                            SPDLOG_ERROR("检测到PLC连接异常: 值={}, 描述={}", alarm_value, alarm_description);
+                            // 已在上面强制上报，这里不再重复上报
+                        } else {
+                            SPDLOG_WARN("检测到报警信号: 值={}, 描述={}", alarm_value, alarm_description);
+                            // 上报非连接故障报警信号
+                            report_alarm(alarm_value, alarm_description);
+                        }
                     }
-                    
-                    // 上报报警信号
-                    report_alarm(alarm_value, alarm_description);
                 } else {
                     // 如果从有报警恢复到无报警，清空已上报记录
                     if (!m_reported_alarms.empty()) {
@@ -136,7 +173,7 @@ void AlarmMonitor::monitor_thread_func() {
             SPDLOG_ERROR("报警监控异常: {}", e.what());
             
             // 发生异常时也应当上报连接故障
-            report_alarm(255, "系统监控异常: " + std::string(e.what()));
+            report_alarm(255, "系统监控异常: " + std::string(e.what()), true);
         }
         
         // 等待指定间隔后再次检查
@@ -168,7 +205,7 @@ std::string AlarmMonitor::parse_alarm_signal(uint8_t alarm_value) {
     return "未知报警(编码:" + std::to_string(alarm_value) + ")";
 }
 
-void AlarmMonitor::report_alarm(uint8_t alarm_value, const std::string& alarm_description) {
+void AlarmMonitor::report_alarm(uint8_t alarm_value, const std::string& alarm_description, bool force_report) {
     // 检查是否已经上报过该报警
     auto it = m_reported_alarms.find(alarm_value);
     
@@ -181,8 +218,11 @@ void AlarmMonitor::report_alarm(uint8_t alarm_value, const std::string& alarm_de
         auto time_since_last_report = std::chrono::duration_cast<std::chrono::seconds>(
             current_time - it->second.last_report_time).count();
             
-        // 如果距离上次上报时间少于60秒，不重复上报
-        if (time_since_last_report < 60) {
+        // 所有报警都使用60秒的上报间隔，包括PLC连接故障(255)
+        int report_interval = 60;
+            
+        // 如果不是强制上报且距离上次上报时间少于间隔时间，不重复上报
+        if (!force_report && time_since_last_report < report_interval) {
             SPDLOG_DEBUG("报警信号已于{}秒前上报，跳过重复上报: 值={}, 描述={}", 
                 time_since_last_report, alarm_value, alarm_description);
             return;

@@ -79,6 +79,14 @@ public:
      */
     bool is_running() const;
 
+    /**
+     * @brief 上报报警信号
+     * @param alarm_value 报警信号值
+     * @param alarm_description 报警描述
+     * @param force_report 是否强制上报
+     */
+    void report_alarm(uint8_t alarm_value, const std::string& alarm_description, bool force_report = false);
+
 private:
     /**
      * @brief 构造函数 - 初始化监控状态
@@ -107,13 +115,6 @@ private:
      * @return 报警状态描述
      */
     std::string parse_alarm_signal(uint8_t alarm_value);
-    
-    /**
-     * @brief 上报报警信号
-     * @param alarm_value 报警信号值
-     * @param alarm_description 报警描述
-     */
-    void report_alarm(uint8_t alarm_value, const std::string& alarm_description);
     
     // 静态成员变量
     static std::thread m_monitor_thread;      // 监控线程

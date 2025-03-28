@@ -89,6 +89,14 @@ public:
      */
     bool is_connected() const { return m_is_connected; }
 
+
+    /**
+    * @brief 调整字节流顺序
+    * @details plc存储是大端序，而主机是小端序，需调整顺序解析正确数值
+    * @return PLC中存储的正确数值
+    */
+    float bytesSwap(const byte* bytes);
+
     // PLC设备配置常量
     static std::string get_plc_ip();  // PLC的IP地址
     static int get_plc_port();        // Modbus TCP默认端口，对于Snap7为102

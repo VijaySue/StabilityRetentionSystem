@@ -374,36 +374,9 @@ void StabilityServer::handle_device_state(http_request request) {
         
         // 获取设备状态
         DeviceState state = PLCManager::instance().get_current_state();
-        
-        // 调试输出：打印原始状态数据
-        std::cout << "\n=== 设备状态数据 ===" << std::endl;
-        std::cout << "操作模式: " << state.operationMode << std::endl;
-        std::cout << "急停状态: " << state.emergencyStop << std::endl;
-        std::cout << "油泵状态: " << state.oilPumpStatus << std::endl;
-        std::cout << "刚柔缸状态: " << state.cylinderState << std::endl;
-        std::cout << "平台1状态: " << state.platform1State << std::endl;
-        std::cout << "平台2状态: " << state.platform2State << std::endl;
-        std::cout << "加热状态: " << state.heaterStatus << std::endl;
-        std::cout << "冷却状态: " << state.coolingStatus << std::endl;
-        std::cout << "报警状态: " << state.alarmStatus << std::endl;
-        std::cout << "1#调平状态: " << state.leveling1Status << std::endl;
-        std::cout << "2#调平状态: " << state.leveling2Status << std::endl;
-        std::cout << "刚柔缸压力: " << state.cylinderPressure << std::endl;
-        std::cout << "升降压力: " << state.liftPressure << std::endl;
-        std::cout << "平台1倾斜: " << state.platform1TiltAngle << std::endl;
-        std::cout << "平台2倾斜: " << state.platform2TiltAngle << std::endl;
-        std::cout << "平台1位置: " << state.platform1Position << std::endl;
-        std::cout << "平台2位置: " << state.platform2Position << std::endl;
-        std::cout << "时间戳: " << state.timestamp << std::endl;
-        std::cout << "==================\n" << std::endl;
-        
+
         // 使用新的转换函数生成JSON字符串
         std::string json_str = device_state_to_json(state);
-        
-        // 调试输出：打印JSON字符串
-        std::cout << "=== JSON字符串 ===" << std::endl;
-        std::cout << json_str << std::endl;
-        std::cout << "==================\n" << std::endl;
         
         // 根据参数筛选响应内容
         if (!query_params.empty()) {
@@ -449,11 +422,6 @@ void StabilityServer::handle_device_state(http_request request) {
                         
                         // 使用过滤后的JSON
                         json_str = filtered_json.dump();
-                        
-                        // 调试输出：打印过滤后的JSON
-                        std::cout << "=== 过滤后的JSON ===" << std::endl;
-                        std::cout << json_str << std::endl;
-                        std::cout << "==================\n" << std::endl;
                     }
                 }
             }

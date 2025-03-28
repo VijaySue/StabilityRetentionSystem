@@ -31,7 +31,7 @@ namespace constants {
  * @namespace plc_address
  * @brief PLC地址定义
  * @details 根据西门子S7系列PLC地址映射表定义，用于Modbus TCP通信
- * @note 更新地址映射：VB=字节(8位) VD=双字(32位,int32_t)
+ * @note 更新地址映射：VB=字节(8位) VD=双字(32位,float)
  */
 namespace plc_address {
     // VB1000 位定义（布尔类型）
@@ -73,7 +73,7 @@ struct DeviceState {
      */
     struct RawData {
         uint8_t vb_data[2000] = {0};   // VB地址范围的原始数据 (字节类型)
-        int32_t vd_data[2000] = {0};   // VD地址范围的原始数据 (32位整型)
+        float vd_data[2000] = {0};   // VD地址范围的原始数据 (32位浮点数)
     } raw;
     
     // 解析后的状态信息（用于API响应和显示）
@@ -86,24 +86,18 @@ struct DeviceState {
     std::string heaterStatus;      // 电加热状态："加热"/"停止"
     std::string coolingStatus;     // 风冷状态："启动"/"停止"
     
-    // 报警状态信息，API中作为单独端点上报
-    std::string alarmStatus;       // 报警状态："油温低"/"油温高"/"液位低"/"液位高"/"滤芯堵"
-    
     // 电动缸调平状态
     std::string leveling1Status;   // 1#电动缸调平："停止"/"启动"
     std::string leveling2Status;   // 2#电动缸调平："停止"/"启动"
     
     // 解析后的数值指标
-    int32_t cylinderPressure;        // 刚柔缸下降停止压力值
-    int32_t liftPressure;            // 升降平台上升停止压力值
-    int32_t platform1TiltAngle;      // 平台1倾斜角度
-    int32_t platform2TiltAngle;      // 平台2倾斜角度
-    int32_t platform1Position;       // 平台1位置信息
-    int32_t platform2Position;       // 平台2位置信息
+    float cylinderPressure;        // 刚柔缸下降停止压力值
+    float liftPressure;            // 升降平台上升停止压力值
+    float platform1TiltAngle;      // 平台1倾斜角度
+    float platform2TiltAngle;      // 平台2倾斜角度
+    float platform1Position;       // 平台1位置信息
+    float platform2Position;       // 平台2位置信息
 
-    // 时间戳
-    int64_t timestamp;          // 状态更新时间戳
-    
     /**
      * @brief 获取VB地址对应的字节值
      * @param address PLC的VB地址
@@ -114,11 +108,11 @@ struct DeviceState {
     }
     
     /**
-     * @brief 获取VD地址对应的整型值
+     * @brief 获取VD地址对应的浮点数值
      * @param address PLC的VD地址
-     * @return 对应地址的整型值
+     * @return 对应地址的浮点数值
      */
-    inline int32_t getVD(uint16_t address) const { 
+    inline float getVD(uint16_t address) const { 
         return raw.vd_data[address]; 
     }
     
@@ -132,11 +126,11 @@ struct DeviceState {
     }
     
     /**
-     * @brief 设置VD地址对应的整型值
+     * @brief 设置VD地址对应的浮点数值
      * @param address PLC的VD地址
      * @param value 要设置的值
      */
-    inline void setVD(uint16_t address, int32_t value) { 
+    inline void setVD(uint16_t address, float value) { 
         raw.vd_data[address] = value; 
     }
     
