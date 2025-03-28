@@ -39,17 +39,6 @@ int main(int argc, char* argv[]) {
     SPDLOG_INFO("开始加载配置文件: {}", config_file);
     if (ConfigManager::instance().load_config(config_file)) {
         SPDLOG_INFO("成功加载配置文件");
-        
-        // 输出当前配置以便诊断
-        auto& config = ConfigManager::instance();
-        SPDLOG_INFO("配置值:");
-        SPDLOG_INFO("  服务器主机: {}", config.get_server_host());
-        SPDLOG_INFO("  服务器端口: {}", config.get_server_port());
-        SPDLOG_INFO("  PLC IP地址: {}", config.get_plc_ip());
-        SPDLOG_INFO("  PLC端口: {}", config.get_plc_port());
-        SPDLOG_INFO("  边缘系统地址: {}", config.get_edge_system_address());
-        SPDLOG_INFO("  边缘系统端口: {}", config.get_edge_system_port());
-        SPDLOG_INFO("  日志级别: {}", config.get_log_level());
     } else {
         SPDLOG_ERROR("无法加载配置文件，将使用默认配置");
     }
