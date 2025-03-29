@@ -83,11 +83,7 @@ sudo apt-get install -y libboost-all-dev
 vcpkg install cpprestsdk:x64-linux
 vcpkg install nlohmann-json:x64-linux
 
-# 安装 spdlog 和 fmt
-# 可以使用apt安装
-sudo apt-get install -y libspdlog-dev libfmt-dev
-
-# 或从源码编译安装
+# 安装 spdlog
 git clone https://github.com/gabime/spdlog.git
 cd spdlog
 git checkout v1.9.2
@@ -95,6 +91,7 @@ mkdir build && cd build
 cmake .. && make -j
 sudo make install
 
+# 安装fmt
 git clone https://github.com/fmtlib/fmt.git
 cd fmt
 git checkout 9.1.0
@@ -103,12 +100,11 @@ cmake .. && make -j
 sudo make install
 
 # 安装 Snap7 西门子通信库
-wget https://sourceforge.net/projects/snap7/files/snap7-full/1.4.0/snap7-full-1.4.0.7z
-7z x snap7-full-1.4.0.7z
-cd snap7-full-1.4.0/build/unix
+git clone https://github.com/SCADACS/snap7.git
+cd snap7/build/unix
 make -f x86_64_linux.mk
 sudo cp lib/libsnap7.so /usr/lib/
-sudo cp ../../../release/Wrappers/c-cpp/snap7.h /usr/include/
+sudo cp ../../src/sys/snap7.h /usr/include/
 
 # 刷新动态库缓存
 sudo ldconfig
@@ -135,15 +131,19 @@ sudo make install
 
 ```ini
 [server]
-port = 8080              # API 服务监听端口
-host = 0.0.0.0           # API 服务监听地址，0.0.0.0表示监听所有接口
-callback_url = http://localhost:9090/callback
+port = 8080               # API 服务监听端口
+host = 0.0.0.0            # API 服务监听地址，0.0.0.0表示监听所有接口
 
 [plc]
-ip = 192.168.1.10        # PLC设备IP地址
-rack = 0                 # PLC机架号
-slot = 1                 # PLC槽号
-check_interval = 1000    # 状态检查间隔(毫秒)
+ip = 192.168.28.57        # PLC设备IP地址,不需要http前缀
+port = 102                # PLC设备Modbus TCP端口
+
+[logging]
+level = info              # 日志级别：trace, debug, info, warning, error, critical
+
+[edge_system]
+address = http://192.168.28.57      # 边缘系统服务器地址
+port = 8080                         # 边缘系统服务端口
 ```
 
 2. 系统启动时会自动加载配置文件：
@@ -176,15 +176,15 @@ sudo ./scripts/uninstall_service.sh
 
 系统通过 `config/config.ini` 文件进行配置，主要参数包括：
 
-| 段落     | 参数             | 说明                  | 默认值          |
-| -------- | ---------------- | --------------------- | --------------- |
-| server   | port             | HTTP服务器端口        | 8080            |
-| server   | host             | 服务器监听地址        | 0.0.0.0         |
-| server   | callback_url     | 回调地址              | localhost:9090  |
-| plc      | ip               | PLC设备IP地址         | 192.168.1.10    |
-| plc      | rack             | PLC机架号             | 0               |
-| plc      | slot             | PLC槽号               | 1               |
-| plc      | check_interval   | 状态检查间隔(毫秒)    | 1000            |
+| 段落         | 参数      | 说明                  | 默认值              |
+| ------------ | --------- | --------------------- | ------------------- |
+| server       | port      | HTTP服务器端口        | 8080                |
+| server       | host      | 服务器监听地址        | 0.0.0.0             |
+| plc          | ip        | PLC设备IP地址         | 192.168.28.57       |
+| plc          | port      | PLC设备Modbus TCP端口  | 102                 |
+| logging      | level     | 日志级别              | info                |
+| edge_system  | address   | 边缘系统服务器地址    | http://192.168.28.57|
+| edge_system  | port      | 边缘系统服务端口      | 8080                |
 
 ### API使用示例
 

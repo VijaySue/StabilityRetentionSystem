@@ -34,24 +34,55 @@ install_dependencies() {
     apt-get install -y nlohmann-json3-dev
     
     # 安装 spdlog 和 fmt
-    apt-get install -y libspdlog-dev 
-    apt-get install -y libfmt-dev
+    if [ ! -f "/usr/local/lib/libspdlog.so" ]; then
+        echo "安装 spdlog 1.9.2..."
+        # 临时目录
+        TMP_DIR=$(mktemp -d)
+        cd $TMP_DIR
+        
+        git clone https://github.com/gabime/spdlog.git
+        cd spdlog
+        git checkout v1.9.2
+        mkdir build && cd build
+        cmake .. && make -j
+        make install
+        cd $TMP_DIR
+        rm -rf spdlog
+    fi
+    
+    if [ ! -f "/usr/local/lib/libfmt.so" ]; then
+        echo "安装 fmt 9.1.0..."
+        # 临时目录
+        TMP_DIR=$(mktemp -d)
+        cd $TMP_DIR
+        
+        git clone https://github.com/fmtlib/fmt.git
+        cd fmt
+        git checkout 9.1.0
+        mkdir build && cd build
+        cmake .. && make -j
+        make install
+        cd $TMP_DIR
+        rm -rf fmt
+        cd -
+    fi
     
     # 检查 Snap7 是否已安装
     if [ ! -f "/usr/lib/libsnap7.so" ]; then
-        echo "安装 Snap7..."
-        # 安装 7z 解压工具
-        apt-get install -y p7zip-full
+        echo "安装 Snap7 1.4.0..."
+        # 临时目录
+        TMP_DIR=$(mktemp -d)
+        cd $TMP_DIR
         
-        # 下载和安装 Snap7 1.4.0
-        wget https://sourceforge.net/projects/snap7/files/snap7-full/1.4.0/snap7-full-1.4.0.7z
-        7z x snap7-full-1.4.0.7z
-        cd snap7-full-1.4.0/build/unix
+        # 下载Snap7
+        git clone https://github.com/SCADACS/snap7.git
+        cd snap7/build/unix
         make -f x86_64_linux.mk
         cp lib/libsnap7.so /usr/lib/
-        cp ../../../release/Wrappers/c-cpp/snap7.h /usr/include/
-        cd ../../../
-        rm -rf snap7-full-1.4.0 snap7-full-1.4.0.7z
+        cp ../../src/sys/snap7.h /usr/include/
+        cd $TMP_DIR
+        rm -rf snap7
+        cd -
     fi
     
     # 刷新动态库缓存
@@ -96,15 +127,19 @@ install_files() {
         echo -e "${YELLOW}未找到配置文件目录，创建默认配置...${NC}"
         cat > ${INSTALL_DIR}/config/config.ini << EOF
 [server]
-port = 8080
-host = 0.0.0.0
-callback_url = http://localhost:9090/callback
+port = 8080               # API 服务监听端口
+host = 0.0.0.0            # API 服务监听地址，0.0.0.0表示监听所有接口
 
 [plc]
-ip = 192.168.1.10
-rack = 0
-slot = 1
-check_interval = 1000
+ip = 192.168.28.57        # PLC设备IP地址,不需要http前缀
+port = 102                # PLC设备Modbus TCP端口
+
+[logging]
+level = info              # 日志级别：trace, debug, info, warning, error, critical
+
+[edge_system]
+address = http://192.168.28.57      # 边缘系统服务器地址
+port = 8080                         # 边缘系统服务端口
 EOF
     fi
     
