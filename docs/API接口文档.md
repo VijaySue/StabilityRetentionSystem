@@ -309,7 +309,6 @@ GET {{base_stability_url}}/stability/device/state?fields=platform1State,platform
     "platform2State": "下降停止",
     "heaterStatus": "加热",
     "coolingStatus": "启动",
-    "alarmStatus": 0,
     "leveling1Status": "停止",
     "leveling2Status": "停止",
     "cylinderPressure": 25000,
@@ -343,6 +342,7 @@ GET {{base_stability_url}}/stability/device/state?fields=platform1State,platform
 | platform1Position  | integer | 平台1位置信息     | 四字节整型数                 |
 | platform2Position  | integer | 平台2位置信息     | 四字节整型数                 |
 | timestamp          | integer | 数据时间戳       | 毫秒级时间戳                 |
+
 ### 6. 错误异常上报接口
 
 **请求路径**：`{{base_edge_url}}/stability/error/report`

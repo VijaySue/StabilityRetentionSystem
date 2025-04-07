@@ -10,6 +10,7 @@
 #include "../include/plc_manager.h"
 #include "../include/callback_client.h"
 #include <spdlog/spdlog.h>
+#include <cpprest/http_client.h>
 
 /**
  * @brief 获取TaskManager单例实例

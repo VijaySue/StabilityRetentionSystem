@@ -96,23 +96,32 @@ void StabilityServer::init_routes() {
 void StabilityServer::handle_health(http_request request) {
     SPDLOG_DEBUG("处理系统状态检测请求");
     web::json::value response;
-    
+
     // 检查PLC连接状态
     PLCManager& plc = PLCManager::instance();
-    
-    // 直接尝试读取一次数据来验证连接状态
-    try {
-        DeviceState state = plc.get_current_state();
-        response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-        response["code"] = web::json::value::number(200);
-        response["status"] = web::json::value::string("online");
-    } catch (const std::exception& e) {
-        SPDLOG_ERROR("读取PLC数据失败: {}", e.what());
+
+    // 先检查连接状态，避免在未连接状态调用get_current_state
+    if (!plc.is_connected()) {
+        SPDLOG_INFO("PLC未连接，直接返回offline状态");
         response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
         response["code"] = web::json::value::number(200);
         response["status"] = web::json::value::string("offline");
+    } else {
+        // 只有当PLC已连接时，才尝试读取数据
+        try {
+            DeviceState state = plc.get_current_state();
+            response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
+            response["code"] = web::json::value::number(200);
+            response["status"] = web::json::value::string("online");
+        }
+        catch (const std::exception& e) {
+            SPDLOG_ERROR("读取PLC数据失败: {}", e.what());
+            response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
+            response["code"] = web::json::value::number(200);
+            response["status"] = web::json::value::string("offline");
+        }
     }
-    
+
     request.reply(status_codes::OK, response);
 }
 
@@ -130,13 +139,13 @@ void StabilityServer::handle_support_control(http_request request) {
         .then([=](web::json::value body) {
         try {
             SPDLOG_INFO("收到支撑控制请求");
-            
+
             // 参数校验
             if (!body.has_field("taskId") ||
                 !body.has_field("defectId") ||
                 !body.has_field("state")) {
                 SPDLOG_WARN("支撑控制请求参数不完整");
-                
+
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
                 error_response["code"] = web::json::value::number(400);
@@ -149,8 +158,8 @@ void StabilityServer::handle_support_control(http_request request) {
             const int defectId = body["defectId"].as_integer();
             const utility::string_t state = body["state"].as_string();
 
-            SPDLOG_INFO("支撑控制请求参数：taskId={}, defectId={}, state={}", 
-                         taskId, defectId, state);
+            SPDLOG_INFO("支撑控制请求参数：taskId={}, defectId={}, state={}",
+                taskId, defectId, state);
 
             // 验证state参数的有效性
             if (state != "刚性支撑" && state != "柔性复位") {
@@ -162,7 +171,7 @@ void StabilityServer::handle_support_control(http_request request) {
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
-            
+
             // 创建异步任务
             // JSON映射: state → operation
             // JSON中没有platformNum，所以不提供target参数
@@ -200,14 +209,14 @@ void StabilityServer::handle_platform_height_control(http_request request) {
         .then([=](web::json::value body) {
         try {
             SPDLOG_INFO("收到平台高度控制请求");
-            
+
             // 参数校验
             if (!body.has_field("taskId") ||
                 !body.has_field("defectId") ||
                 !body.has_field("platformNum") ||
                 !body.has_field("state")) {
                 SPDLOG_WARN("平台高度控制请求参数不完整");
-                
+
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
                 error_response["code"] = web::json::value::number(400);
@@ -221,8 +230,8 @@ void StabilityServer::handle_platform_height_control(http_request request) {
             const int platformNum = body["platformNum"].as_integer();
             const utility::string_t state = body["state"].as_string();
 
-            SPDLOG_INFO("平台高度控制请求参数：taskId={}, defectId={}, platformNum={}, state={}", 
-                         taskId, defectId, platformNum, state);
+            SPDLOG_INFO("平台高度控制请求参数：taskId={}, defectId={}, platformNum={}, state={}",
+                taskId, defectId, platformNum, state);
 
             // 验证platformNum参数的有效性
             if (platformNum != 1 && platformNum != 2) {
@@ -234,7 +243,7 @@ void StabilityServer::handle_platform_height_control(http_request request) {
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
-            
+
             // 验证state参数的有效性
             if (state != "升高" && state != "复位") {
                 SPDLOG_WARN("无效的平台控制状态: {}", state);
@@ -245,7 +254,7 @@ void StabilityServer::handle_platform_height_control(http_request request) {
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
-            
+
             // 创建异步任务
             // JSON映射: state → operation, platformNum → target
             TaskManager::instance().create_task(
@@ -287,14 +296,14 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
         .then([=](web::json::value body) {
         try {
             SPDLOG_INFO("收到平台调平控制请求");
-            
+
             // 参数校验
             if (!body.has_field("taskId") ||
                 !body.has_field("defectId") ||
                 !body.has_field("platformNum") ||
                 !body.has_field("state")) {
                 SPDLOG_WARN("平台调平控制请求参数不完整");
-                
+
                 web::json::value error_response;
                 error_response["msg"] = web::json::value::string("error");
                 error_response["code"] = web::json::value::number(400);
@@ -308,8 +317,8 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
             const int platformNum = body["platformNum"].as_integer();
             const utility::string_t state = body["state"].as_string();
 
-            SPDLOG_INFO("平台调平控制请求参数：taskId={}, defectId={}, platformNum={}, state={}", 
-                         taskId, defectId, platformNum, state);
+            SPDLOG_INFO("平台调平控制请求参数：taskId={}, defectId={}, platformNum={}, state={}",
+                taskId, defectId, platformNum, state);
 
             // 验证platformNum参数的有效性
             if (platformNum != 1 && platformNum != 2) {
@@ -321,7 +330,7 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
-            
+
             // 验证state参数的有效性
             if (state != "调平" && state != "调平复位") {
                 SPDLOG_WARN("无效的调平控制状态: {}", state);
@@ -332,7 +341,7 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
                 request.reply(status_codes::BadRequest, error_response);
                 return;
             }
-            
+
             // 创建异步任务
             // JSON映射: state → operation, platformNum → target
             TaskManager::instance().create_task(
@@ -371,24 +380,24 @@ void StabilityServer::handle_device_state(http_request request) {
         // 获取查询参数
         auto query = request.relative_uri().query();
         auto query_params = web::uri::split_query(query);
-        
+
         // 获取设备状态
         DeviceState state = PLCManager::instance().get_current_state();
 
         // 使用新的转换函数生成JSON字符串
         std::string json_str = device_state_to_json(state);
-        
+
         // 根据参数筛选响应内容
         if (!query_params.empty()) {
             try {
                 // 如果有查询参数，可以解析json_str并进行过滤
                 nlohmann::json json_obj = nlohmann::json::parse(json_str);
-                
+
                 // 检查是否有指定需要返回的字段
                 if (query_params.find(U("fields")) != query_params.end()) {
                     auto fields_param = query_params[U("fields")];
                     std::vector<std::string> fields;
-                    
+
                     // 分割字段参数
                     std::istringstream iss(utility::conversions::to_utf8string(fields_param));
                     std::string field;
@@ -400,26 +409,29 @@ void StabilityServer::handle_device_state(http_request request) {
                             fields.push_back(field);
                         }
                     }
-                    
+
                     if (!fields.empty()) {
                         // 创建一个只包含指定字段的新JSON对象
                         nlohmann::json filtered_json;
-                        
-                        // 保留msg字段和timestamp作为基本响应
+
+                        // 保留msg字段、code字段和timestamp作为基本响应
                         if (json_obj.contains("msg")) {
                             filtered_json["msg"] = json_obj["msg"];
+                        }
+                        if (json_obj.contains("code")) {
+                            filtered_json["code"] = json_obj["code"];
                         }
                         if (json_obj.contains("timestamp")) {
                             filtered_json["timestamp"] = json_obj["timestamp"];
                         }
-                        
+
                         // 添加请求的字段
                         for (const auto& field : fields) {
                             if (json_obj.contains(field)) {
                                 filtered_json[field] = json_obj[field];
                             }
                         }
-                        
+
                         // 使用过滤后的JSON
                         json_str = filtered_json.dump();
                     }
@@ -430,19 +442,19 @@ void StabilityServer::handle_device_state(http_request request) {
                 throw std::runtime_error("JSON处理错误: " + std::string(e.what()));
             }
         }
-        
+
         // 创建HTTP响应
         request.reply(status_codes::OK, json_str, "application/json");
-        
+
         SPDLOG_DEBUG("设备状态请求已处理");
     }
     catch (const std::exception& e) {
         SPDLOG_ERROR("设备状态请求处理失败: {}", e.what());
-        
+
         web::json::value error_response;
         error_response["msg"] = web::json::value::string("error");
         error_response["error"] = web::json::value::string(e.what());
-        
+
         request.reply(status_codes::InternalError, error_response);
     }
 }

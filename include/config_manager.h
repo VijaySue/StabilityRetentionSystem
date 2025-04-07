@@ -81,16 +81,10 @@ public:
 
     /**
      * @brief 获取边缘系统地址
-     * @return 边缘系统的地址
+     * @return 边缘系统的完整URL
      */
-    std::string get_edge_system_address() const { return edge_system_address; }
+    std::string get_edge_system_url() const { return edge_system_url; }
     
-    /**
-     * @brief 获取边缘系统端口
-     * @return 边缘系统的端口
-     */
-    int get_edge_system_port() const { return edge_system_port; }
-
     bool get_basic_auth_enabled() const { return basic_auth_enabled_; }
     const std::string& get_username() const { return username_; }
     const std::string& get_password() const { return password_; }
@@ -106,8 +100,8 @@ private:
     ConfigManager() = default;
     
     // 服务器配置
-    std::string server_host = "0.0.0.0";  // 默认监听所有接口
     int server_port = 8080;               // 默认端口
+    std::string server_host = "0.0.0.0";  // 默认监听所有接口
     
     // PLC配置
     std::string plc_ip = "127.0.0.1";  // 默认PLC IP地址
@@ -117,8 +111,7 @@ private:
     std::string log_level = "info";       // 默认日志级别
 
     // 边缘系统配置
-    std::string edge_system_address = "http://127.0.0.1";  // 默认边缘系统地址
-    int edge_system_port = 8080;          // 默认边缘系统端口
+    std::string edge_system_url = "http://127.0.0.1:8080";  // 默认边缘系统地址（包含端口）
 
     bool basic_auth_enabled_;
     std::string username_;

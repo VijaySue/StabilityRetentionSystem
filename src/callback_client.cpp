@@ -14,12 +14,21 @@
 // 通过函数获取基础URL
 const utility::string_t CallbackClient::get_edge_callback_base_url() {
     ConfigManager& config = ConfigManager::instance();
-    std::string url = config.get_edge_system_address();
-    int port = config.get_edge_system_port();
+    std::string url = config.get_edge_system_url();
     
-    // 构建完整URL
-    std::string fullUrl = url + ":" + std::to_string(port);
-    return utility::conversions::to_string_t(fullUrl);
+    // 确保 URL 格式正确
+    if (url.find("://") == std::string::npos) {
+        // 如果没有协议头，添加 http://
+        url = "http://" + url;
+    }
+    
+    // 确保最后没有斜杠
+    if (url.back() == '/') {
+        url = url.substr(0, url.length() - 1);
+    }
+    
+    SPDLOG_DEBUG("使用回调基础 URL: {}", url);
+    return utility::conversions::to_string_t(url);
 }
 
 CallbackClient& CallbackClient::instance() {
@@ -39,7 +48,7 @@ void CallbackClient::send_support_callback(int taskId, int defectId, const std::
     body["state"] = web::json::value::string(state);
 
     // 发送POST请求到边缘系统回调接口
-    m_client.request(web::http::methods::POST, "/stability/support/cback", body)
+    m_client.request(web::http::methods::POST, "/business/task/stability/support/cback", body)
         .then([=](web::http::http_response response) {
         if (response.status_code() != web::http::status_codes::OK) {
             SPDLOG_ERROR("支撑回调失败，任务ID: {}，状态码: {}", taskId, response.status_code());
@@ -65,7 +74,7 @@ void CallbackClient::send_platform_height_callback(int taskId, int defectId, int
     body["state"] = web::json::value::string(state);
 
     // 发送POST请求到边缘系统回调接口
-    m_client.request(web::http::methods::POST, "/stability/platformHeight/cback", body)
+    m_client.request(web::http::methods::POST, "/business/task/stability/platformHeight/cback", body)
         .then([=](web::http::http_response response) {
         if (response.status_code() != web::http::status_codes::OK) {
             SPDLOG_ERROR("平台高度回调失败，任务ID: {}，状态码: {}", taskId, response.status_code());
@@ -91,7 +100,7 @@ void CallbackClient::send_platform_horizontal_callback(int taskId, int defectId,
     body["state"] = web::json::value::string(state);
 
     // 发送POST请求到边缘系统回调接口
-    m_client.request(web::http::methods::POST, "/stability/platformHorizontal/cback", body)
+    m_client.request(web::http::methods::POST, "/business/task/stability/platformHorizontal/cback", body)
         .then([=](web::http::http_response response) {
         if (response.status_code() != web::http::status_codes::OK) {
             SPDLOG_ERROR("平台调平回调失败，任务ID: {}，状态码: {}", taskId, response.status_code());

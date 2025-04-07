@@ -80,9 +80,9 @@ def test_support_control(server_ip, server_port, task_id, defect_id, state):
     
     # 构造请求参数
     request_data = {
+        "state": state,
         "taskId": task_id,
-        "defectId": defect_id,
-        "state": state
+        "defectId": defect_id
     }
     
     try:
@@ -337,8 +337,8 @@ def main():
     # 默认设置
     server_ip = "192.168.6.130"
     server_port = 8080
-    task_id = 123
-    defect_id = 456
+    task_id = 125
+    defect_id = 91
     
     while True:
         choice = show_menu()

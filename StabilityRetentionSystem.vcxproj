@@ -101,7 +101,12 @@
   <ItemGroup>
     <None Include="config\config.ini" />
     <None Include="makefile" />
+    <None Include="scripts\create_deb.sh" />
+    <None Include="scripts\create_packages.sh" />
+    <None Include="scripts\create_rpm.sh" />
+    <None Include="scripts\install.sh" />
     <None Include="scripts\install_service.sh" />
+    <None Include="scripts\uninstall.sh" />
     <None Include="scripts\uninstall_service.sh" />
   </ItemGroup>
   <ItemGroup>
@@ -111,6 +116,7 @@
     <ClInclude Include="include\config_manager.h" />
     <ClInclude Include="include\plc_manager.h" />
     <ClInclude Include="include\server.h" />
+    <ClInclude Include="include\snap7.h" />
     <ClInclude Include="include\task_manager.h" />
   </ItemGroup>
   <ItemGroup>

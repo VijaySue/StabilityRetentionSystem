@@ -163,13 +163,9 @@ bool ConfigManager::load_config(const std::string& config_file) {
                     }
                 }
                 else if (current_section == "edge_system") {
-                    if (key == "address") {
-                        edge_system_address = value;
-                        SPDLOG_DEBUG("设置edge_system.address = {}", edge_system_address);
-                    }
-                    else if (key == "port") {
-                        edge_system_port = std::stoi(value);
-                        SPDLOG_DEBUG("设置edge_system.port = {}", edge_system_port);
+                    if (key == "url") {
+                        edge_system_url = value;
+                        SPDLOG_DEBUG("设置edge_system.url = {}", edge_system_url);
                     }
                 }
                 else if (current_section == "security") {
@@ -208,8 +204,7 @@ bool ConfigManager::load_config(const std::string& config_file) {
     SPDLOG_INFO("  plc.ip = {}", plc_ip);
     SPDLOG_INFO("  plc.port = {}", plc_port);
     SPDLOG_INFO("  logging.level = {}", log_level);
-    SPDLOG_INFO("  edge_system.address = {}", edge_system_address);
-    SPDLOG_INFO("  edge_system.port = {}", edge_system_port);
+    SPDLOG_INFO("  edge_system.url = {}", edge_system_url);
     
     return true;
 }

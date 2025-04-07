@@ -2,7 +2,7 @@
 CXX := g++
 
 # 编译选项
-CXXFLAGS := -g -Wall -std=c++17
+CXXFLAGS := -g -Wall -std=c++17 -static-libgcc -static-libstdc++
 
 # 目录定义
 SRC_DIR := src
@@ -18,7 +18,8 @@ INCLUDE_DIRS := -I$(INCLUDE_DIR) -I/home/vijaysue/vcpkg/installed/x64-linux/incl
 LIBRARY_DIRS := -L$(LIB_DIR) -L/home/vijaysue/vcpkg/installed/x64-linux/lib -L/usr/lib
 
 # 需要链接的第三方（添加 OpenSSL 依赖）
-LIBRARIES := -lspdlog -lcpprest -lpthread -lssl -lcrypto -lsnap7
+# 静态链接选项
+LIBRARIES := -Wl,-Bstatic -lspdlog -lcpprest -Wl,-Bdynamic -lpthread -lssl -lcrypto -lsnap7
 
 # 源文件列表
 SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp)
@@ -28,6 +29,11 @@ OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRC_FILES))
 
 # 目标可执行文件名称
 TARGET := $(BIN_DIR)/stability_server
+
+# 全静态编译选项（可选，取消注释以启用完全静态编译）
+# 注意：某些库可能不支持完全静态链接，特别是SSL和系统库
+#CXXFLAGS += -static
+#LIBRARIES := -static -lspdlog -lcpprest -lpthread -lssl -lcrypto -lsnap7
 
 # 默认目标
 all: $(TARGET)
@@ -40,9 +46,14 @@ $(TARGET): $(OBJ_FILES)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@ 
 
+# 全静态版本目标（可选）
+static: CXXFLAGS += -static
+static: LIBRARIES := -static -lspdlog -lcpprest -lpthread -lssl -lcrypto -lsnap7
+static: $(TARGET)
+
 # 清理生成的文件
 clean:
 	rm -rf $(OBJ_DIR)/*.o $(TARGET)
 
 # 伪目标声明
-.PHONY: all clean
+.PHONY: all clean static

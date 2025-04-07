@@ -72,9 +72,16 @@ bool PLCManager::connect_plc() {
     
     // 释放之前的连接
     if (m_client != nullptr) {
-        m_client->Disconnect();
+        try {
+            // 先尝试安全断开
+            m_client->Disconnect();
+        } catch (const std::exception& e) {
+            SPDLOG_WARN("断开旧连接时出现异常: {}", e.what());
+            // 异常不影响后续流程，继续释放资源
+        }
         delete m_client;
         m_client = nullptr;
+        m_is_connected = false;
     }
 
     // 连接重试次数和间隔
@@ -114,6 +121,8 @@ bool PLCManager::connect_plc() {
                 char error_text[256];
                 Cli_ErrorText(result, error_text, sizeof(error_text));
                 SPDLOG_ERROR("连接到PLC设备失败: 错误码 {}, 错误信息: {}", result, error_text);
+                
+                // 确保释放资源
                 delete m_client;
                 m_client = nullptr;
                 m_is_connected = false;
@@ -139,6 +148,9 @@ bool PLCManager::connect_plc() {
             }
             m_is_connected = false;
             retry_count++;
+            
+            // 在重试之前添加短暂延迟，确保文件描述符有时间被操作系统释放
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
     }
     
@@ -181,24 +193,49 @@ DeviceState PLCManager::get_current_state() {
         }
     }
     
-    // 尝试从PLC读取数据
-    if (!read_plc_data()) {
-        // 读取失败，尝试重新连接
-        SPDLOG_ERROR("无法从PLC读取数据，尝试重新连接...");
-        m_is_connected = false; // 标记为未连接状态
+    // 为避免文件描述符泄漏，使用局部变量跟踪是否需要重新连接
+    bool need_reconnect = false;
+    
+    try {
+        // 尝试从PLC读取数据
+        if (!read_plc_data()) {
+            // 读取失败，标记需要重新连接
+            SPDLOG_ERROR("无法从PLC读取数据，尝试重新连接...");
+            need_reconnect = true;
+        } else {
+            // 读取成功，解析数据
+            parse_raw_values();
+            return m_current_state;
+        }
+    }
+    catch (const std::exception& e) {
+        SPDLOG_ERROR("从PLC读取数据时发生异常: {}", e.what());
+        need_reconnect = true;
+    }
+    
+    // 如果需要重连，确保先释放当前连接
+    if (need_reconnect) {
+        // 确保明确断开旧连接并释放资源
+        if (m_client != nullptr) {
+            m_client->Disconnect();
+            delete m_client;
+            m_client = nullptr;
+        }
+        m_is_connected = false;
+        
+        // 尝试重新连接
         if (connect_plc()) {
             if (!read_plc_data()) {
                 SPDLOG_ERROR("重连后仍无法从PLC读取数据");
                 throw std::runtime_error("无法从PLC读取数据");
             }
+            parse_raw_values();
+            return m_current_state;
         } else {
             SPDLOG_ERROR("PLC重连失败");
             throw std::runtime_error("PLC重连失败");
         }
     }
-    
-    // 将原始值解析为可读状态
-    parse_raw_values();
     
     return m_current_state;
 }

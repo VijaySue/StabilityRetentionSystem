@@ -142,8 +142,7 @@ port = 102                # PLC设备Modbus TCP端口
 level = info              # 日志级别：trace, debug, info, warning, error, critical
 
 [edge_system]
-address = http://192.168.28.57      # 边缘系统服务器地址
-port = 8080                         # 边缘系统服务端口
+url = http://192.168.28.57:8080    # 边缘系统完整URL（包含协议、地址和端口）
 ```
 
 2. 系统启动时会自动加载配置文件：
@@ -176,15 +175,14 @@ sudo ./scripts/uninstall_service.sh
 
 系统通过 `config/config.ini` 文件进行配置，主要参数包括：
 
-| 段落         | 参数      | 说明                  | 默认值              |
-| ------------ | --------- | --------------------- | ------------------- |
-| server       | port      | HTTP服务器端口        | 8080                |
-| server       | host      | 服务器监听地址        | 0.0.0.0             |
-| plc          | ip        | PLC设备IP地址         | 192.168.28.57       |
-| plc          | port      | PLC设备Modbus TCP端口  | 102                 |
-| logging      | level     | 日志级别              | info                |
-| edge_system  | address   | 边缘系统服务器地址    | http://192.168.28.57|
-| edge_system  | port      | 边缘系统服务端口      | 8080                |
+| 段落         | 参数      | 说明                  | 默认值                  |
+| ------------ | --------- | --------------------- | ----------------------- |
+| server       | port      | HTTP服务器端口        | 8080                    |
+| server       | host      | 服务器监听地址        | 0.0.0.0                 |
+| plc          | ip        | PLC设备IP地址         | 192.168.28.57           |
+| plc          | port      | PLC设备Modbus TCP端口  | 102                     |
+| logging      | level     | 日志级别              | info                    |
+| edge_system  | url       | 边缘系统完整URL       | http://127.0.0.1:8080   |
 
 ### API使用示例
 

@@ -11,6 +11,21 @@
     <None Include="scripts\uninstall_service.sh">
       <Filter>scripts</Filter>
     </None>
+    <None Include="scripts\create_deb.sh">
+      <Filter>scripts</Filter>
+    </None>
+    <None Include="scripts\create_packages.sh">
+      <Filter>scripts</Filter>
+    </None>
+    <None Include="scripts\create_rpm.sh">
+      <Filter>scripts</Filter>
+    </None>
+    <None Include="scripts\install.sh">
+      <Filter>scripts</Filter>
+    </None>
+    <None Include="scripts\uninstall.sh">
+      <Filter>scripts</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\task_manager.h">
@@ -32,6 +47,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\alarm_monitor.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\snap7.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
