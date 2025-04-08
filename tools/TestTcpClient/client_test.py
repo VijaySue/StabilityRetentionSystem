@@ -335,7 +335,7 @@ def show_platform_level_menu():
 def main():
     """主函数，交互式菜单"""
     # 默认设置
-    server_ip = "192.168.6.130"
+    server_ip = "192.168.6.140"
     server_port = 8080
     task_id = 125
     defect_id = 91

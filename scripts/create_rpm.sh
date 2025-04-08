@@ -9,24 +9,27 @@ SUMMARY="Stability Retention System for edge control"
 LICENSE="Proprietary"
 VENDOR="YourCompany"
 
+# 项目根目录（脚本所在目录的上一级）
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT_DIR}"
+
 # 创建RPM构建目录
 mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 
 # 创建临时目录结构
 TEMP_DIR="./rpm_build"
-mkdir -p ${TEMP_DIR}/usr/local/bin
-mkdir -p ${TEMP_DIR}/etc/stability-system
-mkdir -p ${TEMP_DIR}/lib/systemd/system
+PKG_DIR="${TEMP_DIR}/${PACKAGE_NAME}-${VERSION}"
+mkdir -p ${PKG_DIR}/{usr/local/bin,etc/stability-system,lib/systemd/system}
 
 # 复制静态编译的可执行文件
-cp ../bin/stability_server ${TEMP_DIR}/usr/local/bin/
-chmod +x ${TEMP_DIR}/usr/local/bin/stability_server
+cp bin/stability_server ${PKG_DIR}/usr/local/bin/
+chmod +x ${PKG_DIR}/usr/local/bin/stability_server
 
 # 复制配置文件
-cp ../config/config.ini ${TEMP_DIR}/etc/stability-system/
+cp config/config.ini ${PKG_DIR}/etc/stability-system/
 
 # 创建systemd服务文件
-cat > ${TEMP_DIR}/lib/systemd/system/stability-system.service << EOL
+cat > ${PKG_DIR}/lib/systemd/system/stability-system.service << EOL
 [Unit]
 Description=Stability Retention System Service
 After=network.target
@@ -44,7 +47,8 @@ WantedBy=multi-user.target
 EOL
 
 # 创建tar源包
-tar -C ${TEMP_DIR} -czf ~/rpmbuild/SOURCES/${PACKAGE_NAME}-${VERSION}.tar.gz .
+echo "Creating source tarball..."
+tar -C ${TEMP_DIR} -czf ~/rpmbuild/SOURCES/${PACKAGE_NAME}-${VERSION}.tar.gz ${PACKAGE_NAME}-${VERSION}
 
 # 创建spec文件
 cat > ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec << EOL
@@ -56,6 +60,7 @@ License:        ${LICENSE}
 URL:            http://example.com
 Source0:        %{name}-%{version}.tar.gz
 BuildArch:      ${ARCH}
+Requires:       openssl, libstdc++
 
 %description
 Stability Retention System for monitoring and control of edge computing systems.
@@ -92,12 +97,26 @@ systemctl disable stability-system.service
 EOL
 
 # 构建RPM包
+echo "Building RPM package..."
 rpmbuild -bb ~/rpmbuild/SPECS/${PACKAGE_NAME}.spec
+BUILD_RESULT=$?
+
+# 检查构建结果
+if [ $BUILD_RESULT -ne 0 ]; then
+    echo "Error: RPM build failed with exit code $BUILD_RESULT"
+    exit $BUILD_RESULT
+fi
 
 # 复制生成的RPM包到当前目录
+echo "Copying RPM package to current directory..."
 find ~/rpmbuild/RPMS -name "${PACKAGE_NAME}*.rpm" -exec cp {} ./ \;
+COPY_RESULT=$?
+
+if [ $COPY_RESULT -ne 0 ]; then
+    echo "Warning: Could not find or copy the built RPM package"
+else
+    echo "RPM package created successfully!"
+fi
 
 # 清理临时目录
-rm -rf ${TEMP_DIR}
-
-echo "RPM package created successfully!" 
+rm -rf ${TEMP_DIR} 

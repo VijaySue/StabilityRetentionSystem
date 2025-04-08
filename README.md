@@ -12,9 +12,6 @@
 - **支撑控制**：实现刚性支撑和柔性复位功能
 - **平台高度控制**：对两个独立的升降平台进行上升和下降控制
 - **平台水平调整**：自动调平功能，保持平台水平
-- **电源控制**：远程控制系统电源开关
-- **电机控制**：远程启动和停止油泵电机
-- **操作模式切换**：支持自动和手动模式切换
 - **异步任务管理**：长时间运行的操作通过异步任务方式管理
 - **错误上报**：提供错误上报接口和完善的异常处理机制
 
@@ -125,9 +122,9 @@ make clean
 sudo make install
 ```
 
-### 运行系统
+### 配置文件说明
 
-1. 配置 `config/config.ini` 文件，根据实际环境修改参数：
+配置 `config/config.ini` 文件，根据实际环境修改参数：
 
 ```ini
 [server]
@@ -135,78 +132,26 @@ port = 8080               # API 服务监听端口
 host = 0.0.0.0            # API 服务监听地址，0.0.0.0表示监听所有接口
 
 [plc]
-ip = 192.168.28.57        # PLC设备IP地址,不需要http前缀
+ip = 192.168.157.57        # PLC设备IP地址,不需要http前缀
 port = 102                # PLC设备Modbus TCP端口
 
 [logging]
 level = info              # 日志级别：trace, debug, info, warning, error, critical
 
 [edge_system]
-url = http://192.168.28.57:8080    # 边缘系统完整URL（包含协议、地址和端口）
+url = http://app.glsh.eeb.cn:8080/autocheck-edge/   # 边缘系统完整URL 
 ```
-
-2. 系统启动时会自动加载配置文件：
-   
-   - 使用`ConfigManager`单例类加载配置
-   - 如果配置文件不存在，将使用默认配置值
-   - 支持运行时动态加载配置
-
-3. 运行系统：
-
-```bash
-# 如果已安装
-/opt/StabilityRetentionSystem/bin/stability_server
-
-# 或直接从项目目录运行
-./bin/stability_server
-```
-
-4. 安装为系统服务（自动启动）：
-
-```bash
-# 安装系统服务（自动开机启动）
-sudo ./scripts/install_service.sh
-
-# 卸载系统服务
-sudo ./scripts/uninstall_service.sh
-```
-
-### 配置文件说明
 
 系统通过 `config/config.ini` 文件进行配置，主要参数包括：
 
-| 段落         | 参数      | 说明                  | 默认值                  |
-| ------------ | --------- | --------------------- | ----------------------- |
-| server       | port      | HTTP服务器端口        | 8080                    |
-| server       | host      | 服务器监听地址        | 0.0.0.0                 |
-| plc          | ip        | PLC设备IP地址         | 192.168.28.57           |
-| plc          | port      | PLC设备Modbus TCP端口  | 102                     |
-| logging      | level     | 日志级别              | info                    |
-| edge_system  | url       | 边缘系统完整URL       | http://127.0.0.1:8080   |
-
-### API使用示例
-
-1. 获取系统状态：
-
-```bash
-curl -X GET http://localhost:8080/stability/health
-```
-
-2. 发送支撑控制命令：
-
-```bash
-curl -X POST http://localhost:8080/stability/support \
-  -H "Content-Type: application/json" \
-  -d '{"taskId": 12345, "defectId": 67890, "state": "rigid"}'
-```
-
-3. 控制平台高度：
-
-```bash
-curl -X POST http://localhost:8080/stability/platform/height \
-  -H "Content-Type: application/json" \
-  -d '{"taskId": 12345, "defectId": 67890, "platformNum": 1, "state": "up"}'
-```
+| 段落          | 参数    | 说明                | 默认值                   |
+| ----------- | ----- | ----------------- | --------------------- |
+| server      | port  | HTTP服务器端口         | 8080                  |
+| server      | host  | 服务器监听地址           | 0.0.0.0               |
+| plc         | ip    | PLC设备IP地址         | 192.168.28.57         |
+| plc         | port  | PLC设备Modbus TCP端口 | 102                   |
+| logging     | level | 日志级别              | info                  |
+| edge_system | url   | 边缘系统完整URL         | http://127.0.0.1:8080 |
 
 ## 故障排除
 
@@ -253,17 +198,25 @@ StabilityRetentionSystem/
 ├── docs/               # 文档目录
 │   ├── API接口文档.md
 │   ├── 部署指南.md
-│   └── 其他文档...
+│   ├── 技术实现方案.md
+│   ├── 需求分析文档.md
+│   ├── 数据结构说明.md
+│   ├── 交付清单.md
+│   ├── 控制系统变量对应表.xlsx
+│   └── 信息平台对稳定性保持系统的需求.docx
 ├── include/            # 头文件目录
 │   ├── server.h       # HTTP服务器模块
 │   ├── plc_manager.h  # PLC通信模块
 │   ├── task_manager.h # 任务管理模块
 │   ├── config_manager.h # 配置管理模块
 │   ├── common.h       # 公共功能和工具
-│   └── callback_client.h # 回调客户端
+│   ├── callback_client.h # 回调客户端
+│   ├── alarm_monitor.h # 报警监控模块
+│   └── snap7.h        # Snap7库头文件
 ├── scripts/           # 脚本文件目录
-│   ├── install_service.sh # 服务安装脚本
-│   └── uninstall_service.sh # 服务卸载脚本
+│   ├── create_rpm.sh  # RPM包创建脚本
+│   ├── create_deb.sh  # DEB包创建脚本
+│   └── create_packages.sh # 打包脚本
 ├── src/               # 源代码目录
 │   ├── main.cpp      # 程序入口点
 │   ├── server.cpp    # HTTP服务器实现
@@ -271,9 +224,19 @@ StabilityRetentionSystem/
 │   ├── task_manager.cpp # 任务管理实现
 │   ├── config_manager.cpp # 配置管理实现
 │   ├── common.cpp    # 公共功能实现
-│   └── callback_client.cpp # 回调客户端实现
+│   ├── callback_client.cpp # 回调客户端实现
+│   ├── alarm_monitor.cpp # 报警监控实现
+│   └── snap7.cpp     # Snap7库实现
+├── tools/             # 工具目录
+│   ├── TestTcpClient/ # TCP客户端测试工具
+│   └── HslCommunicationDemo/ # 通信演示工具
 ├── obj/               # 编译中间文件目录
 ├── makefile          # 项目构建文件
+├── StabilityRetentionSystem.sln # Visual Studio解决方案文件
+├── StabilityRetentionSystem.vcxproj # Visual Studio项目文件
+├── StabilityRetentionSystem.vcxproj.filters # Visual Studio项目过滤器
+├── StabilityRetentionSystem.vcxproj.user # Visual Studio用户设置
+├── LICENSE.txt       # 许可证文件
 └── README.md         # 项目说明文档
 ```
 
@@ -285,6 +248,7 @@ StabilityRetentionSystem/
 - **配置管理模块**：管理系统配置参数，支持从INI文件加载配置
 - **公共功能模块**：提供错误处理等通用功能
 - **回调客户端模块**：实现与上层系统的回调通信
+- **报警监控模块**：监控PLC报警信号并上报
 
 ### 编译构建
 

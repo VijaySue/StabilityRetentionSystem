@@ -209,6 +209,7 @@ def support_control():
         }), 500
 
 
+
 @app.route('/stability/platformHeight/control', methods=['POST'])
 def platform_height_control():
     try:
