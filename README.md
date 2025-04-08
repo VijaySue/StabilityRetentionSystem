@@ -192,7 +192,6 @@ url = http://app.glsh.eeb.cn:8080/autocheck-edge/   # 边缘系统完整URL
 
 ```
 StabilityRetentionSystem/
-├── bin/                 # 编译后的可执行文件目录
 ├── config/             # 配置文件目录
 │   └── config.ini      # 主配置文件
 ├── docs/               # 文档目录
@@ -230,12 +229,7 @@ StabilityRetentionSystem/
 ├── tools/             # 工具目录
 │   ├── TestTcpClient/ # TCP客户端测试工具
 │   └── HslCommunicationDemo/ # 通信演示工具
-├── obj/               # 编译中间文件目录
 ├── makefile          # 项目构建文件
-├── StabilityRetentionSystem.sln # Visual Studio解决方案文件
-├── StabilityRetentionSystem.vcxproj # Visual Studio项目文件
-├── StabilityRetentionSystem.vcxproj.filters # Visual Studio项目过滤器
-├── StabilityRetentionSystem.vcxproj.user # Visual Studio用户设置
 ├── LICENSE.txt       # 许可证文件
 └── README.md         # 项目说明文档
 ```
