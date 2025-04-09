@@ -560,62 +560,79 @@ bool PLCManager::execute_operation(const std::string& operation) {
     
     int result = -1;
     // 创建一个字节的缓冲区，用于写入值1
-    byte buffer[1] = {0x01}; // 0x01 表示值为1
+    byte buffer_on[1] = {0x01};  // 0x01 表示值为1
+    int address = -1;  // M地址的位偏移量
+    std::string address_desc; // M地址描述，用于日志
     
     // 仅保留M地址操作
     if (operation == "刚性支撑") {  // JSON请求中state="刚性支撑"
         // 对应M22.1 - Snap7以0开始的字节偏移和位偏移
-        result = m_client->WriteArea(S7AreaMK, 0, 22*8 + 1, 1, S7WLBit, &buffer);
+        address = 22*8 + 1;
+        address_desc = "M22.1";
         SPDLOG_DEBUG("执行刚性支撑命令，写入M22.1=1");
     }
     else if (operation == "柔性复位") {  // JSON请求中state="柔性复位"
         // 对应M22.2
-        result = m_client->WriteArea(S7AreaMK, 0, 22*8 + 2, 1, S7WLBit, &buffer);
+        address = 22*8 + 2;
+        address_desc = "M22.2";
         SPDLOG_DEBUG("执行柔性复位命令，写入M22.2=1");
     }
     else if (operation == "平台1上升" || operation == "平台1升高") {  // JSON请求中state="升高"，platformNum=1
         // 对应M22.3
-        result = m_client->WriteArea(S7AreaMK, 0, 22*8 + 3, 1, S7WLBit, &buffer);
+        address = 22*8 + 3;
+        address_desc = "M22.3";
         SPDLOG_DEBUG("执行平台1上升命令，写入M22.3=1");
     }
     else if (operation == "平台1下降" || operation == "平台1复位") {  // JSON请求中state="复位"，platformNum=1
         // 对应M22.4
-        result = m_client->WriteArea(S7AreaMK, 0, 22*8 + 4, 1, S7WLBit, &buffer);
+        address = 22*8 + 4;
+        address_desc = "M22.4";
         SPDLOG_DEBUG("执行平台1复位命令，写入M22.4=1");
     }
     else if (operation == "平台2上升" || operation == "平台2升高") {  // JSON请求中state="升高"，platformNum=2
         // 对应M22.5
-        result = m_client->WriteArea(S7AreaMK, 0, 22*8 + 5, 1, S7WLBit, &buffer);
+        address = 22*8 + 5;
+        address_desc = "M22.5";
         SPDLOG_DEBUG("执行平台2上升命令，写入M22.5=1");
     }
     else if (operation == "平台2下降" || operation == "平台2复位") {  // JSON请求中state="复位"，platformNum=2
         // 对应M22.6
-        result = m_client->WriteArea(S7AreaMK, 0, 22*8 + 6, 1, S7WLBit, &buffer);
+        address = 22*8 + 6;
+        address_desc = "M22.6";
         SPDLOG_DEBUG("执行平台2复位命令，写入M22.6=1");
     }
     else if (operation == "平台1调平" || operation == "1号平台调平") {  // JSON请求中state="调平"，platformNum=1
         // 对应M22.7
-        result = m_client->WriteArea(S7AreaMK, 0, 22*8 + 7, 1, S7WLBit, &buffer);
+        address = 22*8 + 7;
+        address_desc = "M22.7";
         SPDLOG_DEBUG("执行平台1调平命令，写入M22.7=1");
     }
     else if (operation == "平台1调平复位" || operation == "1号平台调平复位") {  // JSON请求中state="调平复位"，platformNum=1
         // 对应M23.0
-        result = m_client->WriteArea(S7AreaMK, 0, 23*8 + 0, 1, S7WLBit, &buffer);
+        address = 23*8 + 0;
+        address_desc = "M23.0";
         SPDLOG_DEBUG("执行平台1调平复位命令，写入M23.0=1");
     }
     else if (operation == "平台2调平" || operation == "2号平台调平") {  // JSON请求中state="调平"，platformNum=2
         // 对应M23.1
-        result = m_client->WriteArea(S7AreaMK, 0, 23*8 + 1, 1, S7WLBit, &buffer);
+        address = 23*8 + 1;
+        address_desc = "M23.1";
         SPDLOG_DEBUG("执行平台2调平命令，写入M23.1=1");
     }
     else if (operation == "平台2调平复位" || operation == "2号平台调平复位") {  // JSON请求中state="调平复位"，platformNum=2
         // 对应M23.2
-        result = m_client->WriteArea(S7AreaMK, 0, 23*8 + 2, 1, S7WLBit, &buffer);
+        address = 23*8 + 2;
+        address_desc = "M23.2";
         SPDLOG_DEBUG("执行平台2调平复位命令，写入M23.2=1");
     }
     else {
         SPDLOG_WARN("未实现的PLC操作: {}", operation);
         return false;
+    }
+    
+    // 如果找到有效地址，写入位=1
+    if (address >= 0) {
+        result = m_client->WriteArea(S7AreaMK, 0, address, 1, S7WLBit, buffer_on);
     }
     
     if (result != 0) {
@@ -639,60 +656,119 @@ bool PLCManager::execute_operation(const std::string& operation) {
         
         return false;  // 操作失败，返回false
     } else {
-        SPDLOG_INFO("成功执行操作: {}", operation);
+        SPDLOG_INFO("成功执行操作: {}, 1秒后自动复位", operation);
+        
+        // 创建一个线程，1秒后复位该位
+        std::thread reset_thread([this, address, address_desc]() {
+            // 等待1秒
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            
+            // 创建缓冲区，用于写入值0
+            byte buffer_off[1] = {0x00}; // 0x00 表示值为0
+            
+            // 获取锁
+            std::lock_guard<std::mutex> reset_lock(m_mutex);
+            
+            // 检查是否仍然连接
+            if (m_is_connected && m_client != nullptr) {
+                // 复位位
+                int reset_result = m_client->WriteArea(S7AreaMK, 0, address, 1, S7WLBit, buffer_off);
+                if (reset_result == 0) {
+                    SPDLOG_DEBUG("已复位{}=0", address_desc);
+                } else {
+                    char reset_error_text[256];
+                    Cli_ErrorText(reset_result, reset_error_text, sizeof(reset_error_text));
+                    SPDLOG_ERROR("复位{}=0失败: 错误码 {}, 错误信息: {}", 
+                        address_desc, reset_result, reset_error_text);
+                }
+            } else {
+                SPDLOG_WARN("PLC已断开，无法复位{}=0", address_desc);
+            }
+        });
+        
+        // 分离线程让它在后台运行
+        reset_thread.detach();
+        
         return true;   // 操作成功，返回true
     }
 }
 
 /**
  * @brief 从PLC读取报警信号
- * @details 仅读取报警信号地址(VB_ALARM)的数据，用于报警监控
- * @return 读取的报警信号值，如果读取失败返回255
+ * @details 读取三个报警信号地址(VB1004油温、VB1005液位、VB1006滤芯)的数据，用于报警监控
+ * @return 包含三个报警信号值的结构体，如果读取失败对应字段返回255
  */
-uint8_t PLCManager::read_alarm_signal() {
+AlarmSignals PLCManager::read_alarm_signal() {
     std::lock_guard<std::mutex> lock(m_mutex);
+    
+    // 创建并初始化返回结构体
+    AlarmSignals signals = {255, 255, 255}; // 默认全部为255表示连接故障
     
     // 检查是否已连接
     if (!m_is_connected || m_client == nullptr) {
         SPDLOG_ERROR("PLC未连接，无法读取报警信号");
         m_is_connected = false;  // 确保标记为未连接状态
-        return 255;  // 直接返回255表示连接故障
+        return signals;  // 直接返回全部故障
     }
-    
-    // 创建缓冲区用于读取数据
-    byte buffer[1] = {0};
     
     // 添加读取之前的稳定性检查，确保连接真正稳定
     try {
         if (!m_client->Connected()) {
             SPDLOG_ERROR("PLC连接状态检查失败，将重置连接状态");
             m_is_connected = false;
-            return 255;
+            return signals;
         }
     }
     catch (const std::exception& e) {
         SPDLOG_ERROR("PLC连接检查异常: {}", e.what());
         m_is_connected = false;
-        return 255;
+        return signals;
     }
     
-    // 读取VB1004报警信号
-    int result = m_client->ReadArea(S7AreaDB, 1, 1004, 1, S7WLByte, buffer);
-    if (result != 0) {
+    // 创建三个缓冲区用于读取数据
+    byte buffer[1] = {0};
+    int result;
+    
+    // 读取VB1004报警信号（油温）- 使用常量
+    result = m_client->ReadArea(S7AreaDB, 1, plc_address::VB_ALARM_OIL_TEMP, 1, S7WLByte, buffer);
+    if (result == 0) {
+        signals.oil_temp = buffer[0];
+    } else {
         // 获取错误描述
         char error_text[256];
         Cli_ErrorText(result, error_text, sizeof(error_text));
-        
-        SPDLOG_ERROR("读取VB1004报警信号失败: 错误码 {}, 错误信息: {}", result, error_text);
+        SPDLOG_ERROR("读取VB{}油温报警信号失败: 错误码 {}, 错误信息: {}", 
+            plc_address::VB_ALARM_OIL_TEMP, result, error_text);
         
         // 如果是连接错误，标记连接状态
         if (result == 32) { // 错误码32通常表示连接已断开
             SPDLOG_ERROR("检测到PLC连接已断开");
             m_is_connected = false;
+            return signals; // 连接已断开，直接返回
         }
-        
-        return 255;  // 返回255表示连接故障
     }
     
-    return buffer[0];
-} 
+    // 读取VB1005报警信号（液位）- 使用常量
+    result = m_client->ReadArea(S7AreaDB, 1, plc_address::VB_ALARM_LIQUID_LEVEL, 1, S7WLByte, buffer);
+    if (result == 0) {
+        signals.liquid_level = buffer[0];
+    } else {
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VB{}液位报警信号失败: 错误码 {}, 错误信息: {}", 
+            plc_address::VB_ALARM_LIQUID_LEVEL, result, error_text);
+    }
+    
+    // 读取VB1006报警信号（滤芯）- 使用常量
+    result = m_client->ReadArea(S7AreaDB, 1, plc_address::VB_ALARM_FILTER, 1, S7WLByte, buffer);
+    if (result == 0) {
+        signals.filter = buffer[0];
+    } else {
+        char error_text[256];
+        Cli_ErrorText(result, error_text, sizeof(error_text));
+        SPDLOG_ERROR("读取VB{}滤芯报警信号失败: 错误码 {}, 错误信息: {}", 
+            plc_address::VB_ALARM_FILTER, result, error_text);
+    }
+    
+    return signals;
+}

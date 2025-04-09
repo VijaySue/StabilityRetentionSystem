@@ -12,7 +12,7 @@ logging.basicConfig(
 app = Flask(__name__)
 
 
-@app.route('/stability/platformHeight/cback', methods=['POST'])
+@app.route('/business/task/stability/platformHeight/cback', methods=['POST'])
 def platform_height_callback():
     try:
         data = request.get_json()
@@ -43,7 +43,7 @@ def platform_height_callback():
         }), 500
 
 
-@app.route('/stability/support/cback', methods=['POST'])
+@app.route('/business/task/stability/support/cback', methods=['POST'])
 def support_callback():
     try:
         data = request.get_json()
@@ -71,7 +71,7 @@ def support_callback():
         }), 500
 
 
-@app.route('/stability/platformHorizontal/cback', methods=['POST'])
+@app.route('/business/task/stability/platformHorizontal/cback', methods=['POST'])
 def platform_horizontal_callback():
     try:
         data = request.get_json()
@@ -101,34 +101,12 @@ def platform_horizontal_callback():
             "msg": f"处理回调时发生错误: {str(e)}"
         }), 500
 
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        "code": 200,
-        "msg": "服务正常运行",
-        "timestamp": datetime.now().isoformat()
-    })
-
-
-# 新增模拟原项目的API接口，用于接收测试请求
-
-@app.route('/stability/system/status', methods=['GET'])
-def system_status():
-    logging.info("收到系统状态检测请求")
-    return jsonify({
-        "msg": "success",
-        "code": 200,
-        "status": "online"
-    })
-
-
 @app.route('/stability/device/state', methods=['GET'])
 def device_state():
     # 获取请求中的fields参数
     fields = request.args.get('fields', '')
     logging.info(f"收到设备状态请求, 过滤字段: {fields}")
-    
+
     # 创建一个模拟的设备状态数据，字段名与C++接口保持一致
     device_data = {
         "msg": "success",
@@ -137,7 +115,7 @@ def device_state():
         "emergencyStop": "正常",
         "oilPumpStatus": "停止",
         "cylinderState": "上升停止",
-        "platform1State": "上升停止", 
+        "platform1State": "上升停止",
         "platform2State": "下降停止",
         "heaterStatus": "停止",
         "coolingStatus": "停止",
@@ -151,7 +129,7 @@ def device_state():
         "platform2Position": 0.0,
         "timestamp": int(datetime.now().timestamp() * 1000)
     }
-    
+
     # 如果有fields参数，过滤返回的字段
     if fields:
         field_list = fields.split(',')
@@ -164,7 +142,7 @@ def device_state():
             if field in device_data:
                 filtered_data[field] = device_data[field]
         return jsonify(filtered_data)
-    
+
     return jsonify(device_data)
 
 
@@ -207,6 +185,7 @@ def support_control():
             "code": 500,
             "error": str(e)
         }), 500
+
 
 
 @app.route('/stability/platformHeight/control', methods=['POST'])
@@ -312,38 +291,12 @@ def platform_horizontal_control():
             "error": str(e)
         }), 500
 
-
-@app.route('/stability/alarm/callback', methods=['POST'])
-def alarm_callback():
-    try:
-        data = request.get_json()
-        alarm_code = data.get('alarmCode', 255)
-        alarm_desc = data.get('alarmDesc', '未知报警')
-
-        logging.info(f"收到报警信号回调 - 报警码: {alarm_code}, 描述: {alarm_desc}")
-
-        return jsonify({
-            "code": 200,
-            "msg": "报警信号回调处理成功",
-            "data": {
-                "alarmCode": alarm_code,
-                "alarmDesc": alarm_desc,
-                "timestamp": datetime.now().isoformat()
-            }
-        })
-    except Exception as e:
-        logging.error(f"处理报警信号回调时发生错误: {str(e)}")
-        return jsonify({
-            "code": 500,
-            "msg": f"处理回调时发生错误: {str(e)}"
-        }), 500
-
-
 @app.route('/stability/error/report', methods=['POST'])
 def error_report():
     try:
         data = request.get_json()
         alarm = data.get('alarm', '未知报警')
+        state = data.get('state', 'error')
         timestamp = data.get('timestamp')
         
         # 将时间戳转换为可读格式（如果提供了时间戳）
@@ -356,7 +309,7 @@ def error_report():
             except:
                 pass
                 
-        logging.info(f"收到错误报告 - 报警: {alarm}{time_str}")
+        logging.info(f"收到错误报告 - 报警: {alarm} {state} {time_str}")
 
         return jsonify({
             "code": 200,

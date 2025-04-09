@@ -7,6 +7,10 @@ ARCH="amd64"
 MAINTAINER="VijaySue <your.email@example.com>"
 DESCRIPTION="Stability Retention System for edge control"
 
+# 项目根目录（脚本所在目录的上一级）
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT_DIR}"
+
 # 创建临时目录结构
 TEMP_DIR="./debian_package"
 mkdir -p ${TEMP_DIR}/DEBIAN
@@ -15,11 +19,11 @@ mkdir -p ${TEMP_DIR}/etc/stability-system
 mkdir -p ${TEMP_DIR}/lib/systemd/system
 
 # 复制静态编译的可执行文件
-cp ../bin/stability_server ${TEMP_DIR}/usr/local/bin/
+cp bin/stability_server ${TEMP_DIR}/usr/local/bin/
 chmod +x ${TEMP_DIR}/usr/local/bin/stability_server
 
 # 复制配置文件
-cp ../config/config.ini ${TEMP_DIR}/etc/stability-system/
+cp config/config.ini ${TEMP_DIR}/etc/stability-system/
 
 # 创建systemd服务文件
 cat > ${TEMP_DIR}/lib/systemd/system/stability-system.service << EOL
@@ -47,6 +51,7 @@ Section: utils
 Priority: optional
 Architecture: ${ARCH}
 Maintainer: ${MAINTAINER}
+Depends: libssl1.1, libstdc++6
 Description: ${DESCRIPTION}
 EOL
 

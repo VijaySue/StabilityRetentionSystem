@@ -47,7 +47,14 @@ namespace plc_address {
     const uint16_t VB_CYLINDER_STATE = 1001;  // 刚柔缸状态: 1=下降停止, 2=下降加压, 4=上升停止, 8=上升加压
     const uint16_t VB_LIFT_PLATFORM1 = 1002;  // 升降平台1状态: 1=上升, 2=上升停止, 4=下降, 8=下降停止
     const uint16_t VB_LIFT_PLATFORM2 = 1003;  // 升降平台2状态: 1=上升, 2=上升停止, 4=下降, 8=下降停止
-    const uint16_t VB_ALARM = 1004;           // 报警信号: 0=油温低, 1=油温高, 2=液位低, 4=液位高, 8=滤芯堵
+    
+    // 报警信号地址定义
+    const uint16_t VB_ALARM_OIL_TEMP = 1004;   // 油温报警: 1=油温低, 2=油温高, 4=正常
+    const uint16_t VB_ALARM_LIQUID_LEVEL = 1005; // 液位报警: 1=液位低, 2=液位高, 4=正常
+    const uint16_t VB_ALARM_FILTER = 1006;    // 滤芯堵报警: 1=滤芯堵, 2=正常
+    
+    // 保留原有常量以兼容现有代码
+    const uint16_t VB_ALARM = VB_ALARM_OIL_TEMP; // 报警信号兼容旧代码
     
     // VD 地址（双字类型，32位浮点）
     const uint16_t VD_CYLINDER_PRESSURE = 1010;  // 刚柔缸下降停止压力值

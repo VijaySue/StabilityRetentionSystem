@@ -15,6 +15,16 @@
 #include <snap7.h>  // 添加Snap7库支持
 
 /**
+ * @brief 报警信号结构体
+ * @details 包含三种报警信号的值
+ */
+struct AlarmSignals {
+    uint8_t oil_temp;      // 油温报警 - VB1004: 1=油温低 2=油温高 4=正常
+    uint8_t liquid_level;  // 液位报警 - VB1005: 1=液位低 2=液位高 4=正常
+    uint8_t filter;        // 滤芯堵报警 - VB1006: 1=滤芯堵 2=正常
+};
+
+/**
  * @brief PLC通信管理类（单例）
  * 
  * @details 负责与PLC设备进行通信，实现西门子S7协议的数据读写操作
@@ -78,10 +88,10 @@ public:
 
     /**
      * @brief 从PLC读取报警信号
-     * @details 仅读取报警信号地址(VB_ALARM)的数据，用于报警监控
-     * @return 读取的报警信号值，如果读取失败返回255
+     * @details 读取三个报警信号地址(VB1004油温、VB1005液位、VB1006滤芯)的数据，用于报警监控
+     * @return 包含三个报警信号值的结构体，如果读取失败对应字段返回255
      */
-    uint8_t read_alarm_signal();
+    AlarmSignals read_alarm_signal();
 
     /**
      * @brief 获取PLC连接状态
