@@ -36,13 +36,14 @@
 
 ### 状态码说明
 
-| 状态码 | 说明       |
-| --- | -------- |
-| 200 | 请求成功     |
-| 400 | 请求参数错误   |
-| 401 | 未授权访问    |
-| 404 | 请求的资源不存在 |
-| 500 | 服务器内部错误  |
+| 状态码 | 说明                |
+| --- | ----------------- |
+| 200 | 请求成功              |
+| 400 | 请求参数错误            |
+| 401 | 未授权访问             |
+| 404 | 请求的资源不存在          |
+| 500 | 服务器内部错误           |
+| 503 | 服务不可用（如PLC设备未连接时） |
 
 ## 接口清单
 
@@ -63,13 +64,33 @@
 
 **请求方式**：GET
 
-**响应示例**：
+**响应参数**：
+
+| 参数名    | 类型      | 描述                      |
+| ------ | ------- | ----------------------- |
+| msg    | string  | 请求结果："success"或"error"  |
+| code   | integer | 状态码：200(成功)或503(错误)     |
+| state  | string  | 系统状态：`online`或`offline` |
+
+**成功响应示例**：
 
 ```json
 {
     "msg": "success",
     "code": 200,
-    "status": "online"  // online表示在线，offline表示离线
+    "state": "online"
+}
+```
+
+**PLC设备未连接时的响应**：
+
+当PLC设备未连接时，接口会返回错误响应：
+
+```json
+{
+    "msg": "error",
+    "code": 503,
+    "state": "offline"
 }
 ```
 
@@ -103,6 +124,38 @@
 {
     "msg": "success",
     "code": 200
+}
+```
+
+**错误响应**：
+
+1. 请求参数错误：
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "请求参数不完整，需要taskId, defectId和state字段"
+}
+```
+
+或
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "无效的state值，必须为'刚性支撑'或'柔性复位'"
+}
+```
+
+2. PLC设备未连接：
+
+```json
+{
+    "msg": "error",
+    "code": 503,
+    "error": "PLC设备未连接，无法执行操作"
 }
 ```
 
@@ -166,6 +219,48 @@
 }
 ```
 
+**错误响应**：
+
+1. 请求参数错误：
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "请求参数不完整，需要taskId, defectId, platformNum和state字段"
+}
+```
+
+或
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "无效的platformNum值，必须为1或2"
+}
+```
+
+或
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "无效的state值，必须为'升高'或'复位'"
+}
+```
+
+2. PLC设备未连接：
+
+```json
+{
+    "msg": "error",
+    "code": 503,
+    "error": "PLC设备未连接，无法执行操作"
+}
+```
+
 **回调信息**：
 
 - **回调路径**：`{{base_edge_url}}/business/task/stability/platformHeight/cback`
@@ -224,6 +319,48 @@
 {
     "msg": "success",
     "code": 200
+}
+```
+
+**错误响应**：
+
+1. 请求参数错误：
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "请求参数不完整，需要taskId, defectId, platformNum和state字段"
+}
+```
+
+或
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "无效的platformNum值，必须为1或2"
+}
+```
+
+或
+
+```json
+{
+    "msg": "error",
+    "code": 400,
+    "error": "无效的state值，必须为'调平'或'调平复位'"
+}
+```
+
+2. PLC设备未连接：
+
+```json
+{
+    "msg": "error",
+    "code": 503,
+    "error": "PLC设备未连接，无法执行操作"
 }
 ```
 
@@ -318,6 +455,28 @@ GET {{base_stability_url}}/stability/device/state?fields=platform1State,platform
     "platform1Position": 1500,
     "platform2Position": 1200,
     "timestamp": 1686532271000
+}
+```
+
+**PLC设备未连接时的响应**：
+
+当PLC设备未连接时，接口返回错误响应：
+
+```json
+{
+    "msg": "error",
+    "code": 503,
+    "timestamp": 1686532271000
+}
+```
+
+**错误响应**：
+
+```json
+{
+    "msg": "error",
+    "code": 500,
+    "error": "获取设备状态失败：错误描述"
 }
 ```
 

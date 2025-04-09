@@ -112,11 +112,11 @@ bool PLCManager::connect_plc() {
             // 设置连接超时时间（默认是3秒）
             m_client->SetConnectionType(CONNTYPE_BASIC);
             
-            SPDLOG_INFO("设置连接参数: IP={}, 机架=0, 槽位=2", get_plc_ip());
-            m_client->SetConnectionParams(get_plc_ip().c_str(), 0, 2);
+            SPDLOG_INFO("设置连接参数: IP={}", get_plc_ip());
+            m_client->SetConnectionParams(get_plc_ip().c_str(), 0, 1);
 
             SPDLOG_INFO("开始连接到PLC...");
-            int result = m_client->ConnectTo(get_plc_ip().c_str(), 0, 2);
+            int result = m_client->ConnectTo(get_plc_ip().c_str(), 0, 1);
             if (result != 0) {
                 char error_text[256];
                 Cli_ErrorText(result, error_text, sizeof(error_text));

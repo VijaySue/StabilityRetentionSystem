@@ -20,12 +20,14 @@ using namespace web::http::experimental::listener;
 /**
  * @brief 创建错误响应JSON
  * @param message 错误信息
+ * @param code HTTP错误码
  * @return JSON错误响应对象
- * @details 创建标准格式的错误响应，包含msg和error字段
+ * @details 创建标准格式的错误响应，包含msg、code和error字段
  */
-web::json::value create_error_response(const std::string& message) {
+web::json::value create_error_response(const std::string& message, int code = 400) {
     web::json::value response;
     response["msg"] = web::json::value::string("error");
+    response["code"] = web::json::value::number(code);
     response["error"] = web::json::value::string(message);
     return response;
 }
@@ -102,27 +104,27 @@ void StabilityServer::handle_health(http_request request) {
 
     // 先检查连接状态，避免在未连接状态调用get_current_state
     if (!plc.is_connected()) {
-        SPDLOG_INFO("PLC未连接，直接返回offline状态");
-        response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-        response["code"] = web::json::value::number(200);
-        response["status"] = web::json::value::string("offline");
+        SPDLOG_INFO("PLC未连接，返回错误响应");
+        response["msg"] = web::json::value::string("error");
+        response["code"] = web::json::value::number(503);
+        response["state"] = web::json::value::string("offline");
+        request.reply(status_codes::ServiceUnavailable, response);
     } else {
         // 只有当PLC已连接时，才尝试读取数据
         try {
             DeviceState state = plc.get_current_state();
             response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
             response["code"] = web::json::value::number(200);
-            response["status"] = web::json::value::string("online");
+            response["state"] = web::json::value::string("online");
+            request.reply(status_codes::OK, response);
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("读取PLC数据失败: {}", e.what());
-            response["msg"] = web::json::value::string(constants::MSG_SUCCESS);
-            response["code"] = web::json::value::number(200);
-            response["status"] = web::json::value::string("offline");
+            response["msg"] = web::json::value::string("error");
+            response["code"] = web::json::value::number(503);
+            request.reply(status_codes::ServiceUnavailable, response);
         }
     }
-
-    request.reply(status_codes::OK, response);
 }
 
 /**
@@ -145,12 +147,9 @@ void StabilityServer::handle_support_control(http_request request) {
                 !body.has_field("defectId") ||
                 !body.has_field("state")) {
                 SPDLOG_WARN("支撑控制请求参数不完整");
-
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("请求参数不完整，需要taskId, defectId和state字段");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest, 
+                    create_error_response("请求参数不完整，需要taskId, defectId和state字段", 400));
                 return;
             }
 
@@ -164,11 +163,19 @@ void StabilityServer::handle_support_control(http_request request) {
             // 验证state参数的有效性
             if (state != "刚性支撑" && state != "柔性复位") {
                 SPDLOG_WARN("无效的支撑控制状态: {}", state);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("无效的state值，必须为'刚性支撑'或'柔性复位'");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest,
+                    create_error_response("无效的state值，必须为'刚性支撑'或'柔性复位'", 400));
+                return;
+            }
+
+            // 检查PLC连接状态
+            PLCManager& plc = PLCManager::instance();
+            if (!plc.is_connected()) {
+                SPDLOG_WARN("PLC未连接，无法执行支撑控制操作");
+                
+                request.reply(status_codes::ServiceUnavailable,
+                    create_error_response("PLC设备未连接，无法执行操作", 503));
                 return;
             }
 
@@ -185,11 +192,9 @@ void StabilityServer::handle_support_control(http_request request) {
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("支撑控制请求处理失败: {}", e.what());
-            web::json::value error_response;
-            error_response["msg"] = web::json::value::string("error");
-            error_response["code"] = web::json::value::number(400);
-            error_response["error"] = web::json::value::string(e.what());
-            request.reply(status_codes::BadRequest, error_response);
+            
+            request.reply(status_codes::BadRequest,
+                create_error_response(e.what(), 400));
         }
             });
 }
@@ -216,12 +221,9 @@ void StabilityServer::handle_platform_height_control(http_request request) {
                 !body.has_field("platformNum") ||
                 !body.has_field("state")) {
                 SPDLOG_WARN("平台高度控制请求参数不完整");
-
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("请求参数不完整，需要taskId, defectId, platformNum和state字段");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest,
+                    create_error_response("请求参数不完整，需要taskId, defectId, platformNum和state字段", 400));
                 return;
             }
 
@@ -236,22 +238,28 @@ void StabilityServer::handle_platform_height_control(http_request request) {
             // 验证platformNum参数的有效性
             if (platformNum != 1 && platformNum != 2) {
                 SPDLOG_WARN("无效的平台编号: {}", platformNum);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("无效的platformNum值，必须为1或2");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest,
+                    create_error_response("无效的platformNum值，必须为1或2", 400));
                 return;
             }
 
             // 验证state参数的有效性
             if (state != "升高" && state != "复位") {
                 SPDLOG_WARN("无效的平台控制状态: {}", state);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("无效的state值，必须为'升高'或'复位'");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest,
+                    create_error_response("无效的state值，必须为'升高'或'复位'", 400));
+                return;
+            }
+
+            // 检查PLC连接状态
+            PLCManager& plc = PLCManager::instance();
+            if (!plc.is_connected()) {
+                SPDLOG_WARN("PLC未连接，无法执行平台高度控制操作");
+                
+                request.reply(status_codes::ServiceUnavailable,
+                    create_error_response("PLC设备未连接，无法执行操作", 503));
                 return;
             }
 
@@ -272,11 +280,9 @@ void StabilityServer::handle_platform_height_control(http_request request) {
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("平台高度控制请求处理失败: {}", e.what());
-            web::json::value error_response;
-            error_response["msg"] = web::json::value::string("error");
-            error_response["code"] = web::json::value::number(400);
-            error_response["error"] = web::json::value::string(e.what());
-            request.reply(status_codes::BadRequest, error_response);
+            
+            request.reply(status_codes::BadRequest,
+                create_error_response(e.what(), 400));
         }
             });
 }
@@ -303,12 +309,9 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
                 !body.has_field("platformNum") ||
                 !body.has_field("state")) {
                 SPDLOG_WARN("平台调平控制请求参数不完整");
-
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("请求参数不完整，需要taskId, defectId, platformNum和state字段");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest,
+                    create_error_response("请求参数不完整，需要taskId, defectId, platformNum和state字段", 400));
                 return;
             }
 
@@ -323,22 +326,28 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
             // 验证platformNum参数的有效性
             if (platformNum != 1 && platformNum != 2) {
                 SPDLOG_WARN("无效的平台编号: {}", platformNum);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("无效的platformNum值，必须为1或2");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest,
+                    create_error_response("无效的platformNum值，必须为1或2", 400));
                 return;
             }
 
             // 验证state参数的有效性
             if (state != "调平" && state != "调平复位") {
                 SPDLOG_WARN("无效的调平控制状态: {}", state);
-                web::json::value error_response;
-                error_response["msg"] = web::json::value::string("error");
-                error_response["code"] = web::json::value::number(400);
-                error_response["error"] = web::json::value::string("无效的state值，必须为'调平'或'调平复位'");
-                request.reply(status_codes::BadRequest, error_response);
+                
+                request.reply(status_codes::BadRequest,
+                    create_error_response("无效的state值，必须为'调平'或'调平复位'", 400));
+                return;
+            }
+
+            // 检查PLC连接状态
+            PLCManager& plc = PLCManager::instance();
+            if (!plc.is_connected()) {
+                SPDLOG_WARN("PLC未连接，无法执行平台调平控制操作");
+                
+                request.reply(status_codes::ServiceUnavailable,
+                    create_error_response("PLC设备未连接，无法执行操作", 503));
                 return;
             }
 
@@ -359,11 +368,9 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
         }
         catch (const std::exception& e) {
             SPDLOG_ERROR("平台调平控制请求处理失败: {}", e.what());
-            web::json::value error_response;
-            error_response["msg"] = web::json::value::string("error");
-            error_response["code"] = web::json::value::number(400);
-            error_response["error"] = web::json::value::string(e.what());
-            request.reply(status_codes::BadRequest, error_response);
+            
+            request.reply(status_codes::BadRequest,
+                create_error_response(e.what(), 400));
         }
             });
 }
@@ -381,8 +388,22 @@ void StabilityServer::handle_device_state(http_request request) {
         auto query = request.relative_uri().query();
         auto query_params = web::uri::split_query(query);
 
+        // 检查PLC连接状态
+        PLCManager& plc = PLCManager::instance();
+        if (!plc.is_connected()) {
+            SPDLOG_INFO("PLC未连接，返回错误响应");
+            web::json::value response;
+            response["msg"] = web::json::value::string("error");
+            response["code"] = web::json::value::number(503);
+            response["timestamp"] = web::json::value::number(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count());
+            
+            request.reply(status_codes::ServiceUnavailable, response);
+            return;
+        }
+
         // 获取设备状态
-        DeviceState state = PLCManager::instance().get_current_state();
+        DeviceState state = plc.get_current_state();
 
         // 使用新的转换函数生成JSON字符串
         std::string json_str = device_state_to_json(state);
@@ -451,10 +472,7 @@ void StabilityServer::handle_device_state(http_request request) {
     catch (const std::exception& e) {
         SPDLOG_ERROR("设备状态请求处理失败: {}", e.what());
 
-        web::json::value error_response;
-        error_response["msg"] = web::json::value::string("error");
-        error_response["error"] = web::json::value::string(e.what());
-
+        web::json::value error_response = create_error_response("获取设备状态失败：" + std::string(e.what()), 500);
         request.reply(status_codes::InternalError, error_response);
     }
 }
