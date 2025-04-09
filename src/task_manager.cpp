@@ -26,7 +26,6 @@ TaskManager& TaskManager::instance() {
  */
 TaskManager::TaskManager() {
     m_worker = std::thread(&TaskManager::worker_thread, this);
-    SPDLOG_INFO("任务管理器启动");
 }
 
 /**
@@ -38,7 +37,6 @@ TaskManager::~TaskManager() {
     if (m_worker.joinable()) {
         m_worker.join();       // 等待线程退出
     }
-    SPDLOG_INFO("任务管理器关闭");
 }
 
 /**
@@ -54,8 +52,6 @@ void TaskManager::create_task(int taskId, int defectId,
     std::lock_guard<std::mutex> lock(m_mutex);
     m_tasks.push({ taskId, defectId, operation, target });
     m_cv.notify_one();  // 通知工作线程有新任务
-    SPDLOG_INFO("创建任务: ID={}, 缺陷ID={}, 操作={}, 目标={}", 
-                taskId, defectId, operation, target.empty() ? "无" : target);
 }
 
 /**
@@ -75,8 +71,6 @@ void TaskManager::worker_thread() {
             lock.unlock();  // 提前释放锁，允许其他线程操作队列
 
             try {
-                SPDLOG_INFO("开始执行任务: ID={}, 操作={}", task.taskId, task.operation);
-                
                 // 映射操作名称到PLC操作指令
                 std::string plc_command;
                 
@@ -148,8 +142,6 @@ void TaskManager::worker_thread() {
                 bool operation_success = PLCManager::instance().execute_operation(plc_command);
                 
                 if (operation_success) {
-                    SPDLOG_INFO("任务执行成功，ID: {}，操作: {}", task.taskId, plc_command);
-                    
                     // 构造回调状态文本
                     std::string state = "success";
                     

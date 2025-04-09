@@ -27,7 +27,6 @@ const utility::string_t CallbackClient::get_edge_callback_base_url() {
         url = url.substr(0, url.length() - 1);
     }
     
-    SPDLOG_DEBUG("使用回调基础 URL: {}", url);
     return utility::conversions::to_string_t(url);
 }
 
@@ -38,7 +37,6 @@ CallbackClient& CallbackClient::instance() {
 
 CallbackClient::CallbackClient()
     : m_client(get_edge_callback_base_url()) {  // 使用从配置读取的地址
-    SPDLOG_DEBUG("初始化回调客户端，目标地址: {}", U(get_edge_callback_base_url()));
 }
 
 void CallbackClient::send_support_callback(int taskId, int defectId, const std::string& state) {
@@ -54,7 +52,6 @@ void CallbackClient::send_support_callback(int taskId, int defectId, const std::
             SPDLOG_ERROR("支撑回调失败，任务ID: {}，状态码: {}", taskId, response.status_code());
             return;
         }
-        SPDLOG_INFO("成功发送支撑回调，任务ID: {}，状态: {}", taskId, state);
             })
         .then([=](pplx::task<void> previousTask) {
         try {
@@ -80,7 +77,6 @@ void CallbackClient::send_platform_height_callback(int taskId, int defectId, int
             SPDLOG_ERROR("平台高度回调失败，任务ID: {}，状态码: {}", taskId, response.status_code());
             return;
         }
-        SPDLOG_INFO("成功发送平台高度回调，任务ID: {}，平台: {}，状态: {}", taskId, platformNum, state);
             })
         .then([=](pplx::task<void> previousTask) {
         try {
@@ -106,7 +102,6 @@ void CallbackClient::send_platform_horizontal_callback(int taskId, int defectId,
             SPDLOG_ERROR("平台调平回调失败，任务ID: {}，状态码: {}", taskId, response.status_code());
             return;
         }
-        SPDLOG_INFO("成功发送平台调平回调，任务ID: {}，平台: {}，状态: {}", taskId, platformNum, state);
             })
         .then([=](pplx::task<void> previousTask) {
         try {
@@ -133,7 +128,6 @@ void CallbackClient::send_alarm_callback(const std::string& alarm_description, c
                     alarm_description, state, response.status_code());
                 return;
             }
-            SPDLOG_INFO("成功发送报警回调，报警描述: {}，状态: {}", alarm_description, state);
         })
         .then([=](pplx::task<void> previousTask) {
             try {

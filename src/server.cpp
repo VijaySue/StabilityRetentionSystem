@@ -51,7 +51,6 @@ void StabilityServer::init_routes() {
     // 统一处理GET请求
     m_listener.support(methods::GET, [this](http_request request) {
         const auto path = request.relative_uri().path();
-        SPDLOG_DEBUG("[GET] 请求路径: {}", path);
 
         if (path == "/stability/system/status") {
             handle_health(request);
@@ -67,7 +66,6 @@ void StabilityServer::init_routes() {
     // 统一处理POST请求
     m_listener.support(methods::POST, [this](http_request request) {
         const auto path = request.relative_uri().path();
-        SPDLOG_DEBUG("[POST] 请求路径: {}", path);
 
         if (path == "/stability/support/control") {
             handle_support_control(request);
@@ -96,7 +94,6 @@ void StabilityServer::init_routes() {
  * @details 返回系统在线状态
  */
 void StabilityServer::handle_health(http_request request) {
-    SPDLOG_DEBUG("处理系统状态检测请求");
     web::json::value response;
 
     // 检查PLC连接状态
@@ -104,7 +101,6 @@ void StabilityServer::handle_health(http_request request) {
 
     // 先检查连接状态，避免在未连接状态调用get_current_state
     if (!plc.is_connected()) {
-        SPDLOG_INFO("PLC未连接，返回错误响应");
         response["msg"] = web::json::value::string("error");
         response["code"] = web::json::value::number(503);
         response["state"] = web::json::value::string("offline");
@@ -140,8 +136,6 @@ void StabilityServer::handle_support_control(http_request request) {
     request.extract_json()
         .then([=](web::json::value body) {
         try {
-            SPDLOG_INFO("收到支撑控制请求");
-
             // 参数校验
             if (!body.has_field("taskId") ||
                 !body.has_field("defectId") ||
@@ -157,9 +151,6 @@ void StabilityServer::handle_support_control(http_request request) {
             const int defectId = body["defectId"].as_integer();
             const utility::string_t state = body["state"].as_string();
 
-            SPDLOG_INFO("支撑控制请求参数：taskId={}, defectId={}, state={}",
-                taskId, defectId, state);
-
             // 验证state参数的有效性
             if (state != "刚性支撑" && state != "柔性复位") {
                 SPDLOG_WARN("无效的支撑控制状态: {}", state);
@@ -172,8 +163,6 @@ void StabilityServer::handle_support_control(http_request request) {
             // 检查PLC连接状态
             PLCManager& plc = PLCManager::instance();
             if (!plc.is_connected()) {
-                SPDLOG_WARN("PLC未连接，无法执行支撑控制操作");
-                
                 request.reply(status_codes::ServiceUnavailable,
                     create_error_response("PLC设备未连接，无法执行操作", 503));
                 return;
@@ -213,8 +202,6 @@ void StabilityServer::handle_platform_height_control(http_request request) {
     request.extract_json()
         .then([=](web::json::value body) {
         try {
-            SPDLOG_INFO("收到平台高度控制请求");
-
             // 参数校验
             if (!body.has_field("taskId") ||
                 !body.has_field("defectId") ||
@@ -231,9 +218,6 @@ void StabilityServer::handle_platform_height_control(http_request request) {
             const int defectId = body["defectId"].as_integer();
             const int platformNum = body["platformNum"].as_integer();
             const utility::string_t state = body["state"].as_string();
-
-            SPDLOG_INFO("平台高度控制请求参数：taskId={}, defectId={}, platformNum={}, state={}",
-                taskId, defectId, platformNum, state);
 
             // 验证platformNum参数的有效性
             if (platformNum != 1 && platformNum != 2) {
@@ -256,8 +240,6 @@ void StabilityServer::handle_platform_height_control(http_request request) {
             // 检查PLC连接状态
             PLCManager& plc = PLCManager::instance();
             if (!plc.is_connected()) {
-                SPDLOG_WARN("PLC未连接，无法执行平台高度控制操作");
-                
                 request.reply(status_codes::ServiceUnavailable,
                     create_error_response("PLC设备未连接，无法执行操作", 503));
                 return;
@@ -301,8 +283,6 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
     request.extract_json()
         .then([=](web::json::value body) {
         try {
-            SPDLOG_INFO("收到平台调平控制请求");
-
             // 参数校验
             if (!body.has_field("taskId") ||
                 !body.has_field("defectId") ||
@@ -319,9 +299,6 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
             const int defectId = body["defectId"].as_integer();
             const int platformNum = body["platformNum"].as_integer();
             const utility::string_t state = body["state"].as_string();
-
-            SPDLOG_INFO("平台调平控制请求参数：taskId={}, defectId={}, platformNum={}, state={}",
-                taskId, defectId, platformNum, state);
 
             // 验证platformNum参数的有效性
             if (platformNum != 1 && platformNum != 2) {
@@ -344,8 +321,6 @@ void StabilityServer::handle_platform_horizontal_control(http_request request) {
             // 检查PLC连接状态
             PLCManager& plc = PLCManager::instance();
             if (!plc.is_connected()) {
-                SPDLOG_WARN("PLC未连接，无法执行平台调平控制操作");
-                
                 request.reply(status_codes::ServiceUnavailable,
                     create_error_response("PLC设备未连接，无法执行操作", 503));
                 return;
@@ -391,7 +366,6 @@ void StabilityServer::handle_device_state(http_request request) {
         // 检查PLC连接状态
         PLCManager& plc = PLCManager::instance();
         if (!plc.is_connected()) {
-            SPDLOG_INFO("PLC未连接，返回错误响应");
             web::json::value response;
             response["msg"] = web::json::value::string("error");
             response["code"] = web::json::value::number(503);
@@ -466,8 +440,6 @@ void StabilityServer::handle_device_state(http_request request) {
 
         // 创建HTTP响应
         request.reply(status_codes::OK, json_str, "application/json");
-
-        SPDLOG_DEBUG("设备状态请求已处理");
     }
     catch (const std::exception& e) {
         SPDLOG_ERROR("设备状态请求处理失败: {}", e.what());

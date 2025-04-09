@@ -40,13 +40,10 @@ AlarmMonitor::AlarmMonitor()
     m_filter_alarm_map[1] = "滤芯堵";
     m_filter_alarm_map[2] = "滤芯正常";
     m_filter_alarm_map[255] = "滤芯传感器通信故障";
-    
-    SPDLOG_INFO("报警监控初始化完成");
 }
 
 AlarmMonitor::~AlarmMonitor() {
     stop();
-    SPDLOG_INFO("报警监控已销毁");
 }
 
 void AlarmMonitor::start(int interval_ms) {
@@ -73,8 +70,6 @@ void AlarmMonitor::start(int interval_ms) {
     
     // 启动监控线程
     m_monitor_thread = std::thread(&AlarmMonitor::monitor_thread_func, this);
-    
-    SPDLOG_INFO("报警监控已启动，检查间隔: {}毫秒", m_interval_ms);
 }
 
 void AlarmMonitor::stop() {
@@ -83,13 +78,11 @@ void AlarmMonitor::stop() {
         if (m_monitor_thread.joinable()) {
             m_monitor_thread.join();
         }
-        SPDLOG_INFO("报警监控已停止");
     }
 }
 
 void AlarmMonitor::set_enabled(bool enabled) {
     m_enabled = enabled;
-    SPDLOG_INFO("报警监控状态已设置为: {}", enabled ? "启用" : "禁用");
 }
 
 bool AlarmMonitor::is_running() const {
@@ -97,11 +90,8 @@ bool AlarmMonitor::is_running() const {
 }
 
 void AlarmMonitor::monitor_thread_func() {
-    SPDLOG_INFO("报警监控线程已启动");
-    
     // 添加初始延迟，确保PLC有足够时间完成初始连接和通信准备
     const int INITIAL_DELAY_MS = 500;  // 启动时等待500毫秒
-    SPDLOG_INFO("等待{}毫秒让PLC通信初始化...", INITIAL_DELAY_MS);
     std::this_thread::sleep_for(std::chrono::milliseconds(INITIAL_DELAY_MS));
     
     while (m_running) {
@@ -118,13 +108,11 @@ void AlarmMonitor::monitor_thread_func() {
                 
                 // 处理PLC连接恢复
                 if (!m_last_connection_ok && current_connection_ok) {
-                    SPDLOG_INFO("PLC连接已恢复");
                     report_connection_recovery();
                 }
                 
                 // 处理PLC连接异常
                 if (!current_connection_ok) {
-                    SPDLOG_ERROR("检测到PLC连接异常，尝试重新连接...");
                     // 主动触发PLC重连
                     bool reconnect_success = plc.connect_plc();
                     
@@ -132,9 +120,7 @@ void AlarmMonitor::monitor_thread_func() {
                     if (!reconnect_success) {
                         // 强制上报连接异常，不等待间隔
                         report_connection_alarm(true);
-                        SPDLOG_ERROR("PLC重连失败，已上报连接故障");
                     } else {
-                        SPDLOG_INFO("PLC重连成功，不上报连接故障");
                         // 重连成功后，读取一次数据验证连接真正恢复
                         AlarmSignals verify_signals = plc.read_alarm_signal();
                         current_connection_ok = (verify_signals.oil_temp != 255 && 
@@ -143,14 +129,12 @@ void AlarmMonitor::monitor_thread_func() {
                         
                         if (current_connection_ok) {
                             // 连接和通信都恢复正常
-                            SPDLOG_INFO("PLC连接已完全恢复");
                             report_connection_recovery();
                             
                             // 使用新读取的验证数据替换原始数据
                             signals = verify_signals;
                         } else {
                             // 连接成功但通信仍然有问题
-                            SPDLOG_ERROR("PLC连接成功但通信验证失败");
                             report_connection_alarm(true);
                         }
                     }
@@ -186,8 +170,6 @@ void AlarmMonitor::monitor_thread_func() {
         // 等待指定间隔后再次检查
         std::this_thread::sleep_for(std::chrono::milliseconds(m_interval_ms));
     }
-    
-    SPDLOG_INFO("报警监控线程已退出");
 }
 
 std::string AlarmMonitor::parse_oil_temp_alarm(uint8_t alarm_value) {
