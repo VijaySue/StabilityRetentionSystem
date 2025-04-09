@@ -287,12 +287,12 @@ GET {{base_stability_url}}/stability/device/state?fields=platform1State,platform
 | coolingStatus      | string  | 风冷状态               |
 | leveling1Status    | string  | 1#电动缸调平            |
 | leveling2Status    | string  | 2#电动缸调平            |
-| cylinderPressure   | integer | 刚柔缸下降停止压力值         |
-| liftPressure       | integer | 升降平台上升停止压力值        |
-| platform1TiltAngle | integer | 平台1倾斜角度            |
-| platform2TiltAngle | integer | 平台2倾斜角度            |
-| platform1Position  | integer | 平台1位置信息            |
-| platform2Position  | integer | 平台2位置信息            |
+| cylinderPressure   | float32 | 刚柔缸下降停止压力值         |
+| liftPressure       | float32 | 升降平台上升停止压力值        |
+| platform1TiltAngle | float32 | 平台1倾斜角度            |
+| platform2TiltAngle | float32 | 平台2倾斜角度            |
+| platform1Position  | float32 | 平台1位置信息            |
+| platform2Position  | float32 | 平台2位置信息            |
 | timestamp          | integer | 数据时间戳              |
 
 **响应示例**：
@@ -335,12 +335,12 @@ GET {{base_stability_url}}/stability/device/state?fields=platform1State,platform
 | coolingStatus      | string  | 风冷状态        | 启动, 停止                 |
 | leveling1Status    | string  | 1#电动缸调平     | 停止, 启动                 |
 | leveling2Status    | string  | 2#电动缸调平     | 停止, 启动                 |
-| cylinderPressure   | integer | 刚柔缸下降停止压力值  | 四字节整型数                 |
-| liftPressure       | integer | 升降平台上升停止压力值 | 四字节整型数                 |
-| platform1TiltAngle | integer | 平台1倾斜角度     | 四字节整型数                 |
-| platform2TiltAngle | integer | 平台2倾斜角度     | 四字节整型数                 |
-| platform1Position  | integer | 平台1位置信息     | 四字节整型数                 |
-| platform2Position  | integer | 平台2位置信息     | 四字节整型数                 |
+| cylinderPressure   | float32 | 刚柔缸下降停止压力值  | 四字节浮点型                 |
+| liftPressure       | float32 | 升降平台上升停止压力值 | 四字节浮点型                 |
+| platform1TiltAngle | float32 | 平台1倾斜角度     | 四字节浮点型                 |
+| platform2TiltAngle | float32 | 平台2倾斜角度     | 四字节浮点型                 |
+| platform1Position  | float32 | 平台1位置信息     | 四字节浮点型                 |
+| platform2Position  | float32 | 平台2位置信息     | 四字节浮点型                 |
 | timestamp          | integer | 数据时间戳       | 毫秒级时间戳                 |
 
 ### 6. 错误异常上报接口
@@ -351,24 +351,37 @@ GET {{base_stability_url}}/stability/device/state?fields=platform1State,platform
 
 **请求参数**：
 
-| 参数名       | 类型      | 必填  | 描述          |
-| --------- | ------- | --- | ----------- |
-| alarm     | string  | 是   | 报警信息        |
-| timestamp | integer | 是   | 错误发生时间戳(毫秒) |
+| 参数名       | 类型      | 必填  | 描述                       |
+| --------- | ------- | --- | ------------------------ |
+| alarm     | string  | 是   | 报警信息                     |
+| state     | string  | 是   | 报警状态:`"error"`或`"clear"` |
+| timestamp | integer | 是   | 错误发生时间戳(毫秒)              |
 
 **可能的报警信息**：
 
 - 油温低
 - 油温高
+- 未知油温报警
 - 液位低
 - 液位高
+- 未知液位报警
 - 滤芯堵
+- 未知滤芯报警
+- PLC连接故障
+
+**可能的清除报警信息**：
+
+- 油温正常
+- 液位正常
+- 滤芯正常
+- PLC连接恢复
 
 **请求示例**：
 
 ```json
 {
     "alarm": "油温低",
+    "state": "error",
     "timestamp": 1686532271000
 }
 ```

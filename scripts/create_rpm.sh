@@ -7,7 +7,7 @@ RELEASE="1"
 ARCH="x86_64"
 SUMMARY="Stability Retention System for edge control"
 LICENSE="Proprietary"
-VENDOR="YourCompany"
+VENDOR="vijaysue@yeah.net"
 
 # 项目根目录（脚本所在目录的上一级）
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

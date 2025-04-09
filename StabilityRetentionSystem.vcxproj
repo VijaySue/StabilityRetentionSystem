@@ -105,9 +105,7 @@
     <None Include="scripts\create_packages.sh" />
     <None Include="scripts\create_rpm.sh" />
     <None Include="scripts\install.sh" />
-    <None Include="scripts\install_service.sh" />
     <None Include="scripts\uninstall.sh" />
-    <None Include="scripts\uninstall_service.sh" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\alarm_monitor.h" />

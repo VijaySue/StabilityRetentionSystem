@@ -4,7 +4,7 @@
 PACKAGE_NAME="stability-retention-system"
 VERSION="1.0.0"
 ARCH="amd64"
-MAINTAINER="VijaySue <your.email@example.com>"
+MAINTAINER="VijaySue <vijaysue@yeah.net>"
 DESCRIPTION="Stability Retention System for edge control"
 
 # 项目根目录（脚本所在目录的上一级）
