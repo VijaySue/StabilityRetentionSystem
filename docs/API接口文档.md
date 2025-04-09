@@ -108,7 +108,7 @@
 
 **回调信息**：
 
-- **回调路径**：`{{base_edge_url}}/business/task/stability/support/cback`
+- **回调路径**：`{{base_edge_url}}/stability/support/cback`
 - **回调方式**：POST
 - **回调参数**：taskId, defectId, state (状态值为`"已刚性支撑"`或`"已柔性复位"`)
 
@@ -168,7 +168,7 @@
 
 **回调信息**：
 
-- **回调路径**：`{{base_edge_url}}/business/task/stability/platformHeight/cback`
+- **回调路径**：`{{base_edge_url}}/stability/platformHeight/cback`
 - **回调方式**：POST
 - **回调参数**：taskId, defectId, platformNum, state (状态值为`"已升高"`或`"已复位"`)
 
@@ -229,7 +229,7 @@
 
 **回调信息**：
 
-- **回调路径**：`{{base_edge_url}}/business/task/stability/platformHorizontal/cback`
+- **回调路径**：`{{base_edge_url}}/stability/platformHorizontal/cback`
 - **回调方式**：POST
 - **回调参数**：taskId, defectId, platformNum, state (状态值为`"已调平"`或`"已调平复位"`)
 

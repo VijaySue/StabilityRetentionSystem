@@ -4,9 +4,6 @@ CXX := g++
 # 编译选项
 CXXFLAGS := -g -Wall -std=c++17 -static-libgcc -static-libstdc++
 
-# 降低内存使用的编译选项
-CXXFLAGS += --param ggc-min-expand=10 --param ggc-min-heapsize=8192
-
 # 目录定义
 SRC_DIR := src
 OBJ_DIR := obj
@@ -15,7 +12,7 @@ INCLUDE_DIR := include
 LIB_DIR := lib
 
 # 第三方库包含路径（根据 vcpkg 安装路径调整）
-INCLUDE_DIRS := -I$(INCLUDE_DIR) -I/home/vijaysue/vcpkg/installed/x64-linux/include -I/usr/include/snap7
+INCLUDE_DIRS := -I$(INCLUDE_DIR) -I/home/vijaysue/vcpkg/installed/x64-linux/include
 
 # 第三方库链接路径（根据 vcpkg 安装路径调整）
 LIBRARY_DIRS := -L$(LIB_DIR) -L/home/vijaysue/vcpkg/installed/x64-linux/lib -L/usr/lib
@@ -48,10 +45,6 @@ $(TARGET): $(OBJ_FILES)
 # 编译每个 .cpp 文件为目标文件
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@ 
-
-# 单独编译特别大的文件，使用更保守的内存设置
-$(OBJ_DIR)/server.o: $(SRC_DIR)/server.cpp
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@ -O0
 
 # 全静态版本目标（可选）
 static: CXXFLAGS += -static

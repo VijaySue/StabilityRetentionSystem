@@ -4,9 +4,6 @@
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-# 设置错误处理
-set -e
-
 echo "----------------------------------------------"
 echo "开始创建Linux安装包..."
 echo "----------------------------------------------"
@@ -30,10 +27,10 @@ fi
 # 确保 obj 和 bin 目录存在
 mkdir -p obj bin
 
-# 执行静态编译 - 使用较少的并行编译数量降低内存使用
+# 执行静态编译
 echo "执行静态编译..."
 make clean
-make static -j2  # 改为只使用2个CPU核心进行并行编译
+make static -j$(nproc)
 
 # 检查编译是否成功
 if [ ! -f "bin/stability_server" ]; then
@@ -95,47 +92,21 @@ rm -rf "${PACK_DIR}"
 echo "创建的自解压安装包: ${SELF_EXTRACT}"
 
 # 创建DEB包
-DEB_SUCCESS=false
 if [ "${CAN_BUILD_DEB}" = true ]; then
     echo "创建DEB包..."
-    if bash ./scripts/create_deb.sh; then
-        if mv *.deb "${RELEASE_DIR}/" 2>/dev/null; then
-            echo "DEB包已移动到 ${RELEASE_DIR}/ 目录"
-            DEB_SUCCESS=true
-        else
-            echo "警告：无法找到或移动生成的DEB包"
-        fi
-    else
-        echo "错误：DEB包创建失败"
-    fi
+    bash ./scripts/create_deb.sh
+    mv *.deb "${RELEASE_DIR}/" 2>/dev/null
+    echo "DEB包已移动到 ${RELEASE_DIR}/ 目录"
 fi
 
 # 创建RPM包
-RPM_SUCCESS=false
 if [ "${CAN_BUILD_RPM}" = true ]; then
     echo "创建RPM包..."
-    if bash ./scripts/create_rpm.sh; then
-        if mv *.rpm "${RELEASE_DIR}/" 2>/dev/null; then
-            echo "RPM包已移动到 ${RELEASE_DIR}/ 目录"
-            RPM_SUCCESS=true
-        else
-            echo "警告：无法找到或移动生成的RPM包"
-        fi
-    else
-        echo "错误：RPM包创建失败"
-    fi
+    bash ./scripts/create_rpm.sh
+    mv *.rpm "${RELEASE_DIR}/" 2>/dev/null
+    echo "RPM包已移动到 ${RELEASE_DIR}/ 目录"
 fi
 
 echo "----------------------------------------------"
 echo "完成！所有安装包已创建在 ${RELEASE_DIR}/ 目录"
-if [ "${DEB_SUCCESS}" = true ]; then
-    echo "✓ DEB包创建成功"
-else
-    echo "✗ DEB包创建失败或跳过"
-fi
-if [ "${RPM_SUCCESS}" = true ]; then
-    echo "✓ RPM包创建成功"
-else
-    echo "✗ RPM包创建失败或跳过"
-fi
 echo "----------------------------------------------" 

@@ -60,9 +60,6 @@ bool ConfigManager::load_config(const std::string& config_file) {
     // 尝试当前工作目录的上一级
     possible_paths.push_back(std::filesystem::current_path().parent_path() / config_file);
     
-    // 添加系统配置目录
-    possible_paths.push_back("/etc/stability-system/config.ini");
-    
     // 尝试每一个可能的路径
     std::ifstream file;
     std::filesystem::path valid_path;
