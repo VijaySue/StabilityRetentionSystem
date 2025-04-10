@@ -66,11 +66,11 @@
 
 **响应参数**：
 
-| 参数名    | 类型      | 描述                      |
-| ------ | ------- | ----------------------- |
-| msg    | string  | 请求结果："success"或"error"  |
-| code   | integer | 状态码：200(成功)或503(错误)     |
-| state  | string  | 系统状态：`online`或`offline` |
+| 参数名   | 类型      | 描述                      |
+| ----- | ------- | ----------------------- |
+| msg   | string  | 请求结果：`success`或`error`  |
+| code  | integer | 状态码：`200`(成功)或`503`(错误) |
+| state | string  | 系统状态：`online`或`offline` |
 
 **成功响应示例**：
 
@@ -299,7 +299,7 @@
 | ----------- | ------- | --- | -------------------- |
 | taskId      | integer | 是   | 任务ID                 |
 | defectId    | integer | 是   | 缺陷ID                 |
-| platformNum | integer | 是   | 平台编号：1或2             |
+| platformNum | integer | 是   | 平台编号：`1`或`2`         |
 | state       | string  | 是   | 控制状态：`"调平"`或`"调平复位"` |
 
 **请求示例**：
