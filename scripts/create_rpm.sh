@@ -19,7 +19,7 @@ mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 # 创建临时目录结构
 TEMP_DIR="./rpm_build"
 PKG_DIR="${TEMP_DIR}/${PACKAGE_NAME}-${VERSION}"
-mkdir -p ${PKG_DIR}/{usr/local/bin,etc/stability-system,lib/systemd/system}
+mkdir -p ${PKG_DIR}/{usr/local/bin,etc/stability-system,lib/systemd/system,usr/bin}
 
 # 复制静态编译的可执行文件
 cp bin/stability_server ${PKG_DIR}/usr/local/bin/
@@ -27,6 +27,10 @@ chmod +x ${PKG_DIR}/usr/local/bin/stability_server
 
 # 复制配置文件
 cp config/config.ini ${PKG_DIR}/etc/stability-system/
+
+# 复制卸载脚本
+cp scripts/uninstall.sh ${PKG_DIR}/usr/bin/stability-uninstall
+chmod +x ${PKG_DIR}/usr/bin/stability-uninstall
 
 # 创建systemd服务文件
 cat > ${PKG_DIR}/lib/systemd/system/stability-system.service << EOL
@@ -72,14 +76,17 @@ Stability Retention System for monitoring and control of edge computing systems.
 mkdir -p %{buildroot}/usr/local/bin
 mkdir -p %{buildroot}/etc/stability-system
 mkdir -p %{buildroot}/lib/systemd/system
+mkdir -p %{buildroot}/usr/bin
 
 cp usr/local/bin/stability_server %{buildroot}/usr/local/bin/
 cp etc/stability-system/config.ini %{buildroot}/etc/stability-system/
 cp lib/systemd/system/stability-system.service %{buildroot}/lib/systemd/system/
+cp usr/bin/stability-uninstall %{buildroot}/usr/bin/
 
 %files
 %attr(755, root, root) /usr/local/bin/stability_server
-%config(noreplace) /etc/stability-system/config.ini
+%attr(755, root, root) /usr/bin/stability-uninstall
+%config /etc/stability-system/config.ini
 /lib/systemd/system/stability-system.service
 
 %post
@@ -88,8 +95,24 @@ systemctl enable stability-system.service
 systemctl start stability-system.service
 
 %preun
-systemctl stop stability-system.service
-systemctl disable stability-system.service
+if [ $1 -eq 0 ]; then
+    # 仅在完全卸载时执行
+    systemctl stop stability-system.service
+    systemctl disable stability-system.service
+fi
+
+%postun
+if [ $1 -eq 0 ]; then
+    # 仅在完全卸载时执行
+    # 删除可能残留的配置目录
+    rm -rf /etc/stability-system
+    # 确保服务文件被删除
+    rm -f /lib/systemd/system/stability-system.service
+    rm -f /usr/lib/systemd/system/stability-system.service
+    systemctl daemon-reload
+    # 删除日志文件
+    rm -f /var/log/stability-system*.log
+fi
 
 %changelog
 * $(date "+%a %b %d %Y") ${VENDOR} <your.email@example.com> - ${VERSION}-${RELEASE}
