@@ -57,7 +57,7 @@ Section: utils
 Priority: optional
 Architecture: ${ARCH}
 Maintainer: ${MAINTAINER}
-Depends: libssl1.1, libstdc++6
+Depends: libssl | libssl1.1 | libssl3, libstdc++6
 Provides: ${PACKAGE_NAME}
 Replaces: ${PACKAGE_NAME}
 Description: ${DESCRIPTION}
