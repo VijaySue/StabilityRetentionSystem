@@ -175,7 +175,11 @@ COPY_RESULT=$?
 if [ $COPY_RESULT -ne 0 ]; then
     echo "Warning: Could not find or copy the built RPM package"
 else
-    echo "RPM package created successfully!"
+    RPM_FILE=$(find . -maxdepth 1 -name "${PACKAGE_NAME}*.rpm" | head -1)
+    # 使用彩色输出
+    echo -e "\033[0;32m[成功]\033[0m RPM包已创建: ${RPM_FILE#./}"
+    echo -e "\033[0;34m[信息]\033[0m 使用以下命令安装: \033[0;36msudo rpm -ivh ${RPM_FILE#./}\033[0m"
+    echo -e "\033[0;34m[信息]\033[0m 如果有依赖问题，请运行: \033[0;36msudo yum install ${RPM_FILE#./}\033[0m 或 \033[0;36msudo dnf install ${RPM_FILE#./}\033[0m"
 fi
 
 # 清理临时目录
