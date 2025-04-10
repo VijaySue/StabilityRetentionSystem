@@ -65,6 +65,8 @@ URL:            http://example.com
 Source0:        %{name}-%{version}.tar.gz
 BuildArch:      ${ARCH}
 Requires:       openssl, libstdc++
+Provides:       %{name} = %{version}-%{release}
+Obsoletes:      %{name} < %{version}-%{release}
 
 %description
 Stability Retention System for monitoring and control of edge computing systems.
@@ -77,6 +79,7 @@ mkdir -p %{buildroot}/usr/local/bin
 mkdir -p %{buildroot}/etc/stability-system
 mkdir -p %{buildroot}/lib/systemd/system
 mkdir -p %{buildroot}/usr/bin
+mkdir -p %{buildroot}/var/log/stability-system
 
 cp usr/local/bin/stability_server %{buildroot}/usr/local/bin/
 cp etc/stability-system/config.ini %{buildroot}/etc/stability-system/
@@ -86,17 +89,50 @@ cp usr/bin/stability-uninstall %{buildroot}/usr/bin/
 %files
 %attr(755, root, root) /usr/local/bin/stability_server
 %attr(755, root, root) /usr/bin/stability-uninstall
-%config /etc/stability-system/config.ini
+%config(noreplace) /etc/stability-system/config.ini
 /lib/systemd/system/stability-system.service
+%dir /var/log/stability-system
+%attr(755, root, root) %dir /var/log/stability-system
 
 %post
+echo -e "\033[0;32m┌────────────────────────────────────────────────┐\033[0m"
+echo -e "\033[0;32m│       稳定性保持系统 - 安装进行中              │\033[0m"
+echo -e "\033[0;32m└────────────────────────────────────────────────┘\033[0m"
+
+echo -e "\033[0;34m[信息]\033[0m 正在配置系统服务..."
 systemctl daemon-reload
 systemctl enable stability-system.service
+echo -e "\033[0;34m[信息]\033[0m 服务已启用，服务名: stability-system"
+
+echo -e "\033[0;34m[信息]\033[0m 正在启动服务..."
 systemctl start stability-system.service
+sleep 2
+
+# 检查服务状态
+if systemctl is-active --quiet stability-system.service; then
+    echo -e "\033[0;32m[成功]\033[0m 服务已成功启动！"
+else
+    echo -e "\033[0;33m[警告]\033[0m 服务启动可能存在问题，请检查状态。"
+fi
+
+echo -e "\033[0;34m[信息]\033[0m 配置文件位置: /etc/stability-system/config.ini"
+echo -e "\033[0;34m[信息]\033[0m 日志文件位置: /var/log/stability-system/"
+
+echo -e "\033[0;32m┌────────────────────────────────────────────────┐\033[0m"
+echo -e "\033[0;32m│       稳定性保持系统 - 安装完成                │\033[0m"
+echo -e "\033[0;32m└────────────────────────────────────────────────┘\033[0m"
+
+echo -e "使用以下命令管理服务："
+echo -e "  启动: \033[0;36msystemctl start stability-system.service\033[0m"
+echo -e "  停止: \033[0;36msystemctl stop stability-system.service\033[0m"
+echo -e "  重启: \033[0;36msystemctl restart stability-system.service\033[0m"
+echo -e "  状态: \033[0;36msystemctl status stability-system.service\033[0m"
+echo -e "  卸载: \033[0;36msudo /usr/bin/stability-uninstall\033[0m"
 
 %preun
 if [ $1 -eq 0 ]; then
     # 仅在完全卸载时执行
+    echo -e "\033[0;34m[信息]\033[0m 停止服务..."
     systemctl stop stability-system.service
     systemctl disable stability-system.service
 fi
@@ -112,6 +148,7 @@ if [ $1 -eq 0 ]; then
     systemctl daemon-reload
     # 删除日志文件
     rm -f /var/log/stability-system*.log
+    echo -e "\033[0;32m[信息]\033[0m 稳定性保持系统已完全卸载"
 fi
 
 %changelog
