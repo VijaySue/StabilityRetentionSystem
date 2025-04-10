@@ -127,7 +127,7 @@ echo -e "  启动: \033[0;36msystemctl start stability-system.service\033[0m"
 echo -e "  停止: \033[0;36msystemctl stop stability-system.service\033[0m"
 echo -e "  重启: \033[0;36msystemctl restart stability-system.service\033[0m"
 echo -e "  状态: \033[0;36msystemctl status stability-system.service\033[0m"
-echo -e "  卸载: \033[0;36msudo /usr/bin/stability-uninstall\033[0m"
+echo -e "  卸载: \033[0;36msudo stability-uninstall\033[0m"
 
 %preun
 if [ $1 -eq 0 ]; then
